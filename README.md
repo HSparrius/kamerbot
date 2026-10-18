@@ -8,11 +8,13 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Filters** (`kamerbot/config.py`): maximaal €1000 brutto, alleen Utrecht, niet aan de
   Ina Boudier-Bakkerlaan of de Pythagoraslaan, geen huizen die alleen vrouwen zoeken, en
   uitsluitwoorden in het verhaaltje.
-- **Wachten tot de deadline nadert:** SSH rangschikt op inschrijfduur, dus vroeg reageren
-  levert geen betere plek op. De bot reageert pas in de laatste 18 uur (`REAGEER_VENSTER_UUR`).
-  Zo houd je plekken vrij voor betere kamers die later binnenkomen.
-- **Score:** je positie weegt het zwaarst, daarna m², huur en of het een zelfstandige woning is.
-  Boven positie 15 (`SSH_MAX_POSITIE`) reageert hij niet.
+- **Reageren op de dag van de deadline:** SSH rangschikt op inschrijfduur, dus vroeg reageren
+  levert geen betere plek op. De bot reageert pas in de laatste 18 uur (`REAGEER_VENSTER_UUR`),
+  en kamers die het eerst verlopen gaan voor.
+- **Kansgrens:** boven plek 30 (`SSH_MAX_POSITIE`) reageert hij niet. Zak je na reageren
+  alsnog onder die grens, dan krijg je een melding.
+- **Score:** binnen dezelfde deadline weegt je positie het zwaarst, daarna m², huur en of het
+  een zelfstandige woning is.
 - **Plekken:** hij vult alleen de vrije plekken (7 min je actieve reacties).
 
 ## Installatie op de VPS
@@ -31,19 +33,30 @@ Test eerst één ronde met `AUTO_REAGEREN=0`, zodat hij alleen meldt:
 set -a; . ./.env; set +a; python -m kamerbot
 ```
 
-Daarna in `crontab -e`:
+Installeer hem daarna als vaste dienst (eenmalig, als root):
 
-```
-*/30 * * * * cd ~/kamerbot && set -a && . ./.env && set +a && .venv/bin/python -m kamerbot >> data/kamerbot.log 2>&1
+```bash
+deploy/installeer.sh
 ```
 
-Werkt alles, zet dan `AUTO_REAGEREN=1`.
+De dienst plant zelf twee rondes per dag, elk op een willekeurig moment: overdag tussen 9:00 en
+18:00, en 's avonds tussen 22:00 en 23:55 om te checken of je nog kans maakt vóór de deadline.
+Hij start vanzelf na een herstart van de VPS.
+
+## Bijwerken
+
+Net als bij de ritbot: merge de PR op GitHub en stuur **/update** naar de bot. Hij haalt de
+nieuwste versie op, herstart en meldt welke versie draait. Start de nieuwe versie niet, dan
+zet hij de vorige vanzelf terug.
+
+Andere commando's: **/status** (laatste en volgende ronde) en **/nu** (meteen een ronde draaien).
+Log bekijken: `journalctl -u kamerbot -f`.
 
 ## Telegram
 
-Maak een bot via @BotFather (`TELEGRAM_TOKEN`). Stuur hem een bericht en haal je chat-id op via
-`https://api.telegram.org/bot<TOKEN>/getUpdates` (`TELEGRAM_CHAT_ID`). Gebruik je de bot van de
-ritbot al, dan kun je diens token en chat-id hergebruiken.
+Maak een eigen bot via @BotFather (`TELEGRAM_TOKEN`). Gebruik niet de token van de ritbot: beide
+diensten luisteren naar commando's, en dan pikken ze elkaars berichten weg. Druk één keer op Start
+bij je bot en haal je chat-id op via @userinfobot (`TELEGRAM_CHAT_ID`).
 
 ## Tests
 

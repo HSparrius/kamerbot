@@ -27,3 +27,17 @@ class Telegram:
             log.error("Telegram fout %s: %s", r.status_code, r.text[:200])
             return False
         return True
+
+    def berichten(self, offset: int, wacht_s: int = 30) -> list[dict]:
+        """Nieuwe berichten via long polling; leeg bij een fout (de dienst probeert het gewoon opnieuw)."""
+        try:
+            r = httpx.post(
+                f"https://api.telegram.org/bot{self.token}/getUpdates",
+                json={"offset": offset, "timeout": wacht_s, "allowed_updates": ["message"]},
+                timeout=wacht_s + 10,
+            )
+            r.raise_for_status()
+            return r.json().get("result", [])
+        except httpx.HTTPError as e:
+            log.warning("getUpdates: %s", type(e).__name__)
+            return []

@@ -33,9 +33,11 @@ class Config:
     # Volgens Hidde maximaal 7 reacties tegelijk; de bot vraagt het actuele aantal op bij SSH.
     max_actief: int = int(os.environ.get("SSH_MAX_ACTIEF", "7"))
     # Pas reageren als de deadline binnen dit aantal uur valt (zie selectie.py).
+    # Met rondes tussen 9:00 en 18:00 en tussen 22:00 en 00:00 betekent 18 uur:
+    # reageren op de dag van de deadline.
     reageer_venster_uur: float = float(os.environ.get("REAGEER_VENSTER_UUR", "18"))
-    # Alleen reageren als je binnen deze positie zit.
-    max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "15"))
+    # Je maakt kans tot en met deze positie (volgens Hidde de eerste 30).
+    max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "30"))
     # Op False: alleen melden via Telegram, niets versturen.
     auto_reageren: bool = os.environ.get("AUTO_REAGEREN", "0") == "1"
     filters: Filters = field(default_factory=Filters)

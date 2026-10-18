@@ -1,0 +1,8 @@
+[Unit]
+Description=Wacht op /update uit Telegram (kamerbot)
+
+[Path]
+PathExists=@APP@/data/update.request
+
+[Install]
+WantedBy=multi-user.target

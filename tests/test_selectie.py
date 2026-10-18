@@ -63,7 +63,7 @@ def test_kies_wacht_tot_deadline_en_vult_alleen_vrije_plekken():
 def test_slechte_positie_wordt_overgeslagen():
     cfg = Config()
     k = kamers()[1478630]
-    k.positie = 30
+    k.positie = 31
     nu = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
     assert selectie.kies([k], 5, cfg, nu) == []
 
@@ -72,3 +72,29 @@ def test_leeg_geslacht_telt_als_geen_voorkeur():
     k = kamers()[1478608]
     k.geslacht = ""
     assert selectie.detailfilter(k, Filters()) is None
+
+
+def test_deadline_is_nederlandse_tijd():
+    k = kamers()[1478671]
+    assert k.deadline.isoformat() == "2026-10-20T23:59:59+02:00"
+
+
+def test_snelst_verlopende_eerst():
+    cfg = Config()
+    ks = [k for k in kamers().values() if selectie.basisfilter(k, cfg.filters) is None]
+    for k in ks:
+        k.positie = 5
+    nu = datetime(2026, 10, 18, 10, 0, tzinfo=timezone.utc)
+    cfg.reageer_venster_uur = 100
+    gekozen = selectie.kies(ks, 3, cfg, nu)
+    assert [k.deadline for k in gekozen] == sorted(k.deadline for k in gekozen)
+    assert gekozen[0].deadline == min(k.deadline for k in ks)
+
+
+def test_kansloos_na_zakken():
+    cfg = Config()
+    k = kamers()[1478671]
+    k.al_gereageerd, k.positie = True, 34
+    assert selectie.kansloos([k], cfg) == [k]
+    k.positie = 30
+    assert selectie.kansloos([k], cfg) == []
