@@ -161,10 +161,12 @@ def test_ronde_trekt_kansloze_reactie_in_en_gebruikt_de_plek(tmp_path):
     cfg = Config()
     cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
     gezakt = kamer(1, al_gereageerd=True, positie=35)
+    zelf_gezakt = kamer(5, al_gereageerd=True, positie=40)  # zelf op de site gereageerd: blijft staan
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "1", "gereageerd")
     goed = kamer(2, al_gereageerd=True, positie=8)
     nieuw = kamer(3)
     niet_passend = kamer(4)
-    ssh, tg, ag = FakeSSH([gezakt, goed, nieuw, niet_passend], actief=7), FakeTG(), FakeAgenda()
+    ssh, tg, ag = FakeSSH([gezakt, zelf_gezakt, goed, nieuw, niet_passend], actief=7), FakeTG(), FakeAgenda()
     uitslagen = {4: oordeel(past=False, cijfer=1, reden="Zoekt internationals")}
 
     class B:
@@ -175,7 +177,7 @@ def test_ronde_trekt_kansloze_reactie_in_en_gebruikt_de_plek(tmp_path):
     assert ssh.ingetrokken == [1]
     assert ssh.gereageerd == [3]  # vrijgekomen plek meteen gebruikt; 4 past niet
     assert ag.weg == ["kamerbot1"]
-    assert sorted(ag.gezet) == ["kamerbot2", "kamerbot3"]
+    assert sorted(ag.gezet) == ["kamerbot2", "kamerbot3", "kamerbot5"]
     assert "1 ingetrokken" in s
     assert any("ingetrokken" in b for b in tg.berichten)
     # Tweede ronde: niets dubbel in de agenda.
@@ -193,6 +195,7 @@ def test_ronde_zonder_auto_trekt_niet_in(tmp_path):
         def beoordeel(self, k):
             return None
 
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "1", "gereageerd")
     ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=35), kamer(2)], actief=7)
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=FakeAgenda())
     assert ssh.ingetrokken == []

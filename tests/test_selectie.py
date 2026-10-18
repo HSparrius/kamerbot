@@ -121,3 +121,8 @@ def test_verhaaltje_dat_alleen_een_vrouw_zoekt():
               deadline=datetime.now(timezone.utc), geslacht=None,
               verhaaltje="Wij zoeken alleen een vrouw!")
     assert selectie.detailfilter(k, Filters()) == "verhaaltje: zoekt een vrouw"
+
+
+def test_kamernummer_staat_in_het_adres():
+    k = next(k for k in kamers().values() if k.straat == "Otterstraat")
+    assert k.locatie.startswith("k") and k.adres.endswith(k.locatie)
