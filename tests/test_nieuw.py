@@ -243,3 +243,71 @@ def test_env_wordt_letterlijk_gelezen(tmp_path, monkeypatch):
     from kamerbot.agenda import lees_sleutel
 
     assert lees_sleutel(dotenv_values(tmp_path / ".env")["GOOGLE_SERVICE_ACCOUNT_JSON"])["client_email"]
+
+
+class GeenOordeel:
+    def beoordeel(self, k):
+        return None
+
+
+def test_intrekken_niet_als_ssh_nee_zegt_tegen_de_nieuwe_kamer(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=35), kamer(2)], actief=7)
+    ssh.kan_reageren = lambda k: (False, "gesloten")
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == []
+    assert ssh.gereageerd == []
+
+
+def test_een_mislukte_reactie_houdt_de_rest_niet_tegen(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    ssh, tg = FakeSSH([kamer(2), kamer(3)], actief=3), FakeTG()
+    echt = ssh.reageer
+
+    def reageer(k):
+        if k.flow_id == 2:
+            raise httpx.HTTPStatusError("dicht", request=httpx.Request("POST", "http://x"),
+                                        response=httpx.Response(400))
+        echt(k)
+
+    ssh.reageer = reageer
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [3]
+    assert any("lukte niet" in b for b in tg.berichten)
+
+
+def test_beoordelaar_stopt_na_drie_fouten(tmp_path):
+    class Kapot:
+        aantal = 0
+
+        class beta:
+            class messages:
+                @staticmethod
+                def parse(**kw):
+                    Kapot.aantal += 1
+                    raise RuntimeError("API plat")
+
+    b = Beoordelaar("", "", Opslag(tmp_path / "db"), client=Kapot)
+    for i in range(6):
+        assert b.beoordeel(kamer(i)) is None
+    assert Kapot.aantal == 3
+
+
+def test_zelf_ingetrokken_reactie_verdwijnt_uit_de_agenda(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    k = kamer(5, al_gereageerd=True, positie=8)
+    ag = FakeAgenda()
+    ronde(cfg, ssh=FakeSSH([k], actief=1), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag)
+    assert ag.gezet == ["kamerbot5"]
+    # Zelf ingetrokken op de site: de kamer staat er nog, maar zonder reactie.
+    los = kamer(5, positie=8, straat="Cambridgelaan")
+    ag2 = FakeAgenda()
+    ronde(cfg, ssh=FakeSSH([los], actief=0), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag2)
+    assert ag2.weg == ["kamerbot5"]
+    # Daarna niet nog eens.
+    ag3 = FakeAgenda()
+    ronde(cfg, ssh=FakeSSH([los], actief=0), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag3)
+    assert ag3.weg == []
