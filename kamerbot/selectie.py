@@ -40,6 +40,13 @@ def detailfilter(k: Kamer, f: Filters) -> str | None:
     return None
 
 
+def oordeelfilter(k: Kamer) -> str | None:
+    """Afwijzen als het taalmodel zegt dat je niet past bij wie ze zoeken."""
+    if k.oordeel is not None and not k.oordeel.past:
+        return f"past niet: {k.oordeel.reden}"
+    return None
+
+
 def score(k: Kamer) -> float:
     """Hoger is beter. Positie weegt het zwaarst: zonder uitnodiging heb je niks aan een mooie kamer."""
     s = 100.0
@@ -50,6 +57,9 @@ def score(k: Kamer) -> float:
     s -= 0.03 * k.brutto_huur
     if k.type == "Woning":
         s += 5
+    cijfer = getattr(k.oordeel, "cijfer", None)
+    if cijfer is not None:
+        s += 3 * (cijfer - 5)  # taalmodel: hoe goed je past bij wie ze zoeken
     return round(s, 1)
 
 

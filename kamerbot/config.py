@@ -40,4 +40,11 @@ class Config:
     max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "30"))
     # Op False: alleen melden via Telegram, niets versturen.
     auto_reageren: bool = os.environ.get("AUTO_REAGEREN", "0") == "1"
+    # Taalmodel dat het verhaaltje leest (beoordeling.py); leeg = uit.
+    anthropic_api_key: str = field(default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", ""))
+    # Wie je bent, voor het taalmodel; leeg = het standaardprofiel in beoordeling.py.
+    profiel: str = field(default_factory=lambda: os.environ.get("PROFIEL", ""))
+    # Hospiteeravonden in je agenda (agenda.py); beide leeg = uit.
+    google_service_account_json: str = field(default_factory=lambda: os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", ""))
+    gcal_agenda_id: str = field(default_factory=lambda: os.environ.get("GCAL_AGENDA_ID", ""))
     filters: Filters = field(default_factory=Filters)

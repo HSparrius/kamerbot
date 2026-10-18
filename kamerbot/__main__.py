@@ -10,7 +10,7 @@ import sys
 import time
 
 from .config import Config
-from .ronde import ronde
+from .ronde import RondeMislukt, ronde
 from .ssh import NietIngelogd
 
 log = logging.getLogger("kamerbot")
@@ -39,6 +39,9 @@ def main() -> int:
     except NietIngelogd:
         log.error("Sessie verlopen tijdens ronde; volgende ronde logt opnieuw in")
         (Config().data_dir / "ssh-cookies.json").unlink(missing_ok=True)
+        return 1
+    except RondeMislukt as e:
+        log.error("Ronde mislukt: %s", e)
         return 1
     return 0
 
