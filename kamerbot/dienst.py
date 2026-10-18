@@ -32,6 +32,11 @@ VENSTERS = {
 }
 OPNIEUW_NA = timedelta(minutes=10)
 SPELING = timedelta(minutes=4)
+COMMANDOS = {
+    "status": "Laatste en volgende ronde",
+    "nu": "Nu een ronde draaien",
+    "update": "Nieuwste versie installeren",
+}
 
 
 
@@ -111,6 +116,7 @@ class Dienst:
     def draai(self) -> None:
         self.data.mkdir(parents=True, exist_ok=True)
         (self.data / "started").write_text(datetime.now(NL).isoformat() + "\n")
+        self.tg.zet_commandos(COMMANDOS)
         log.info("Dienst gestart, volgende ronde %s", self.planning.volgende(datetime.now(NL)))
         while True:
             self.meldingen_doorsturen()
@@ -169,7 +175,7 @@ class Dienst:
                 f"Kansgrens: plek {self.cfg.max_positie}"
             )
         elif cmd in ("/start", "/help"):
-            self.tg.stuur("/status – laatste en volgende ronde\n/nu – nu een ronde draaien\n/update – nieuwste versie installeren")
+            self.tg.stuur("\n".join(f"/{c} – {o.lower()}" for c, o in COMMANDOS.items()))
 
     def meldingen_doorsturen(self) -> None:
         map_ = self.data / "notices"

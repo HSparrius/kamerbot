@@ -28,6 +28,19 @@ class Telegram:
             return False
         return True
 
+    def zet_commandos(self, commandos: dict[str, str]) -> None:
+        """Commando's aanmelden, zodat Telegram de menuknop linksonder in de chat toont."""
+        if not self.token:
+            return
+        try:
+            httpx.post(
+                f"https://api.telegram.org/bot{self.token}/setMyCommands",
+                json={"commands": [{"command": c, "description": o} for c, o in commandos.items()]},
+                timeout=20,
+            ).raise_for_status()
+        except httpx.HTTPError as e:
+            log.warning("setMyCommands: %s", type(e).__name__)
+
     def berichten(self, offset: int, wacht_s: int = 30) -> list[dict]:
         """Nieuwe berichten via long polling; leeg bij een fout (de dienst probeert het gewoon opnieuw)."""
         try:
