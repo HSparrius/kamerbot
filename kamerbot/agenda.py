@@ -140,7 +140,7 @@ class Agenda:
         if status == 404:
             status = self._call("POST", "", {**body, "id": event_id})
         if status in (403, 404):
-            raise AgendaFout(f"geen toegang tot de agenda; deel hem met {self.info['client_email']}"
+            raise AgendaFout(f"geen toegang tot de agenda (HTTP {status}); deel hem met {self.info['client_email']}"
                              " (wijzigingen aanbrengen in afspraken) en controleer GCAL_AGENDA_ID")
         if status not in (200, 201):
             raise AgendaFout(f"afspraak opslaan: HTTP {status}")

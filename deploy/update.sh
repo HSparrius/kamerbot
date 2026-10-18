@@ -21,9 +21,18 @@ started_after() { # is de bot na tijdstip $1 (epoch) gestart?
   [[ -f "$DATA/started" ]] && (( $(stat -c %Y "$DATA/started") >= $1 ))
 }
 
+units() { # systemd-units uit deze versie neerzetten, zodat /update ook die wijzigingen meeneemt
+  local unit
+  for unit in kamerbot.service kamerbot-update.path kamerbot-update.service; do
+    sed "s#@APP@#$APP#g" "$APP/deploy/systemd/$unit" > "/etc/systemd/system/$unit"
+  done
+  systemctl daemon-reload
+}
+
 install_rev() { # zet versie $1 neer en herstart; 0 als hij binnen WAIT_S draait
   git -C "$APP" reset -q --hard "$1" || return 1
   "$APP/.venv/bin/pip" install -q -r "$APP/requirements.txt" || return 1
+  units
   local t0
   t0=$(date +%s)
   rm -f "$DATA/started"

@@ -10,6 +10,14 @@ ExecStart=@APP@/.venv/bin/python -m kamerbot dienst
 Environment=PYTHONUNBUFFERED=1
 Restart=always
 RestartSec=30
+# Loopt de bot (meestal Chrome bij het inloggen) uit de hand, dan grijpt de kernel alleen binnen de
+# kamerbot in. Zo blijven de ritbot en ssh altijd bereikbaar, ook als de server maar weinig geheugen heeft.
+MemoryHigh=400M
+MemoryMax=600M
+MemorySwapMax=0
+TasksMax=200
+OOMScoreAdjust=500
+Nice=10
 
 [Install]
 WantedBy=multi-user.target

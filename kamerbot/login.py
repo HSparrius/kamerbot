@@ -15,6 +15,12 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+# Zuinig met geheugen: de VPS deelt zijn geheugen met de ritbot. Geen /dev/shm (is klein op een VPS),
+# geen GPU, en afbeeldingen, lettertypes en video's worden niet geladen.
+CHROME_ARGS = ["--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--no-zygote",
+               "--renderer-process-limit=1", "--js-flags=--max-old-space-size=256"]
+OVERSLAAN = {"image", "media", "font"}
+
 EMAIL_VELD = "input[type=email], input[name*=mail i], input#loginName"
 WACHTWOORD_VELD = "input[type=password], input#password"
 VERSTUUR = "button[type=submit], button#submit-button"
@@ -24,8 +30,10 @@ def log_in(email: str, wachtwoord: str, cookie_file: Path) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(args=CHROME_ARGS)
         page = browser.new_page(locale="nl-NL")
+        page.route("**/*", lambda route: route.abort() if route.request.resource_type in OVERSLAAN
+                   else route.continue_())
         try:
             page.goto("https://www.sshxl.nl/nl/inloggen", wait_until="networkidle")
             _weiger_cookiebanner(page)
