@@ -311,3 +311,16 @@ def test_zelf_ingetrokken_reactie_verdwijnt_uit_de_agenda(tmp_path):
     ag3 = FakeAgenda()
     ronde(cfg, ssh=FakeSSH([los], actief=0), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag3)
     assert ag3.weg == []
+
+
+def test_eigen_reactie_op_vrouwenhuis_wordt_ingetrokken(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    db = Opslag(tmp_path / "kamerbot.db")
+    db.zet("ssh", "6", "gereageerd")
+    bot = kamer(6, al_gereageerd=True, verhaaltje="Wij zoeken alleen een vrouw.")
+    zelf = kamer(7, al_gereageerd=True, verhaaltje="Wij zoeken alleen een vrouw.")
+    ssh, tg = FakeSSH([bot, zelf], actief=2), FakeTG()
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == [6]  # die van de bot; je eigen reactie blijft staan
+    assert any("zoekt een vrouw" in b for b in tg.berichten)

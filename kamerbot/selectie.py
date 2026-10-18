@@ -8,6 +8,7 @@ later binnenkomen.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 
 from .config import Config, Filters
@@ -27,10 +28,36 @@ def basisfilter(k: Kamer, f: Filters) -> str | None:
     return None
 
 
+_VROUW = r"(vrouw|vrouwen|vrouwelijke?|meid|meiden|meisje|meisjes|dame|dames|girl|girls|woman|women|female|lady|ladies)"
+# Huizen die alleen een vrouw zoeken, ook als SSH het geslachtsveld leeg laat (Van Lieflandlaan, 18 okt 2026).
+_ALLEEN_VROUW = [
+    re.compile(rf"\b(alleen|enkel|uitsluitend|only|just)\b[^.!?\n]{{0,40}}\b{_VROUW}\b"),
+    re.compile(rf"\b(zoeken|zoekt|zoek|looking for|op zoek naar|searching for)\b[^.!?\n]{{0,40}}\b{_VROUW}\b"),
+    re.compile(r"\b(meidenhuis|vrouwenhuis|damesh?uis|girls?[ -]?house|all[ -]female|female[ -]only|women[ -]only)\b"),
+    re.compile(r"\b(huisgenote|roommate|housemate|huisgenoot|bewoner|bewoonster)\s*\((v|f)\)"),
+]
+# "man of vrouw", "m/v": dan is iedereen welkom.
+_IEDEREEN = re.compile(r"\b(man|jongen|guy|male|boy)\b\s*(of|or|/|en|and)\s*\b(vrouw|meid|girl|female|woman)\b"
+                       r"|\b(vrouw|meid|girl|female|woman)\b\s*(of|or|/|en|and)\s*\b(man|jongen|guy|male|boy)\b"
+                       r"|\bm/v\b|\bv/m\b|\bgender (doesn'?t|does not) matter\b|\bgeslacht maakt niet uit\b")
+
+
+def zoekt_alleen_vrouw(tekst: str) -> bool:
+    t = tekst.lower()
+    return not _IEDEREEN.search(t) and any(p.search(t) for p in _ALLEEN_VROUW)
+
+
 def detailfilter(k: Kamer, f: Filters) -> str | None:
     """Filter op wat pas op de kamerpagina staat."""
     if k.al_gereageerd:
         return "al gereageerd"
+    return eisenfilter(k, f)
+
+
+def eisenfilter(k: Kamer, f: Filters) -> str | None:
+    """Wat het huis eist (geslacht, woorden in het verhaaltje), los van of je al reageerde."""
+    if zoekt_alleen_vrouw(k.verhaaltje):
+        return "verhaaltje: zoekt een vrouw"
     if (k.geslacht or None) not in f.toegestane_geslachten:
         return f"zoekt {k.geslacht}"
     tekst = k.verhaaltje.lower()
