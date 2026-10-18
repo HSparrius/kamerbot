@@ -138,15 +138,23 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             for k in nieuw:
                 db.zet("ssh", str(k.flow_id), "gemeld")
 
-    # Gezakt tot buiten de kansgrens: intrekken, dan komt de plek hieronder meteen vrij.
+    # Gezakt tot buiten de kansgrens: alleen intrekken als je die plek nodig hebt voor een kamer waar je
+    # wél kans maakt (Hidde, 18 okt 2026). Zolang er plekken vrij zijn, blijft de reactie gewoon staan.
+    vrij = cfg.max_actief - ssh.actieve_reacties()
+    wachtend = [k for k in selectie.kies(kandidaten, len(kandidaten), cfg)
+                if not db.heeft("ssh", str(k.flow_id), "gereageerd")]
+    nodig = max(len(wachtend) - vrij, 0)
     ingetrokken = 0
-    for k in selectie.kansloos(gereageerd, cfg):
+    kansloos = sorted(selectie.kansloos(gereageerd, cfg), key=lambda k: k.positie, reverse=True)
+    for k in kansloos[:nodig]:
         if cfg.auto_reageren:
             ssh.trek_in(k)
             ingetrokken += 1
+            vrij += 1
             gereageerd.remove(k)
             agenda_weg(agenda, db, tg, k)
-            tg.stuur(f"↩️ Reactie ingetrokken, je zakte naar plek {k.positie} (grens {cfg.max_positie}):\n{regel(k)}")
+            tg.stuur(f"↩️ Reactie ingetrokken, je zakte naar plek {k.positie} (grens {cfg.max_positie}) "
+                     f"en de plek was nodig:\n{regel(k)}")
             continue
         sleutel = f"kansloos-{k.positie}"
         if not db.heeft("ssh", str(k.flow_id), sleutel) and tg.stuur(
@@ -155,7 +163,6 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         ):
             db.zet("ssh", str(k.flow_id), sleutel)
 
-    vrij = cfg.max_actief - ssh.actieve_reacties()
     keuze = selectie.kies(kandidaten, vrij, cfg)
     log.info("%d kandidaten, %d plekken vrij, %d gekozen", len(kandidaten), vrij, len(keuze))
 
