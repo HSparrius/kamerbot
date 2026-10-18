@@ -31,7 +31,8 @@ def test_basisfilter_houdt_ibb_pythagoraslaan_en_andere_steden_tegen():
     assert "Pythagoraslaan" in redenen[1478666]
     assert "Zeist" in redenen[1478676]
     assert "Tilburg" in redenen[1478635]
-    assert sum(r is None for r in redenen.values()) == 28
+    assert "Cambridgelaan" in redenen[next(i for i, k in kamers().items() if k.straat == "Cambridgelaan")]
+    assert sum(r is None for r in redenen.values()) == 22  # 6 op Science Park
 
 
 def test_detailfilter_houdt_vrouwenhuis_tegen():

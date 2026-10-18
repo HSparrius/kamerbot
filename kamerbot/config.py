@@ -8,8 +8,13 @@ from pathlib import Path
 class Filters:
     max_brutto_huur: float = 1000.0
     steden: tuple[str, ...] = ("UTRECHT",)
-    # Straten waar je niet wilt wonen (IBB en de sterrenflats).
-    uitgesloten_straten: tuple[str, ...] = ("Ina Boudier-Bakkerlaan", "Pythagoraslaan")
+    # Straten waar je niet wilt wonen: IBB, de sterrenflats en Utrecht Science Park (De Uithof).
+    uitgesloten_straten: tuple[str, ...] = (
+        "Ina Boudier-Bakkerlaan", "Pythagoraslaan",
+        "Cambridgelaan", "Bolognalaan", "Leuvenlaan", "Leuvenplein", "Salamancapad", "Padualaan",
+        "Heidelberglaan", "Uppsalalaan", "Budapestlaan", "Princetonlaan", "Princetonplein",
+        "Sorbonnelaan", "Yalelaan", "Kyotolaan", "Harvardlaan", "Coimbrapad", "Oxfordlaan",
+    )
     # Wat SSH bij PreferenceGender kan zetten; alles behalve dit wordt overgeslagen.
     toegestane_geslachten: tuple[str | None, ...] = (None, "none", "male")
     # Woorden in het verhaaltje waardoor een kamer afvalt (kleine letters).
