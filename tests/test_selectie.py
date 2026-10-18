@@ -111,6 +111,12 @@ def test_verhaaltje_dat_alleen_een_vrouw_zoekt():
     assert not zoekt("We zoeken een leuke huisgenoot, man of vrouw maakt niet uit.")
     assert not zoekt("Wij zoeken een gezellige huisgenoot die mee-eet. M/V")
     assert not zoekt("Ons huis bestaat uit drie jongens en twee meiden.")
+    # Otterstraat (18 okt 2026): gemengde vraag, dus niet afwijzen op de tekst.
+    assert not zoekt("Wij wonen met 15 personen in een super gezellig, dubbel gemengd huis aan de Otterstraat. "
+                     "Op dit moment bestaan we uit 5 vrouwen en 7 mannen, en zijn we op zoek naar een 6e en 7e "
+                     "vrouw en een 8e man. Vijftien huisgenoten klinkt misschien als veel.")
+    assert not zoekt("We are looking for a girl and a guy to join our house")
+    assert zoekt("We zijn met 4 jongens en 3 meiden en zoeken nu een nieuwe meid.")
     k = Kamer(flow_id=1, wocas_id="1", soort="Hospiteren", type="Kamer", brutto_huur=500,
               deadline=datetime.now(timezone.utc), geslacht=None,
               verhaaltje="Wij zoeken alleen een vrouw!")

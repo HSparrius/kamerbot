@@ -42,9 +42,21 @@ _IEDEREEN = re.compile(r"\b(man|jongen|guy|male|boy)\b\s*(of|or|/|en|and)\s*\b(v
                        r"|\bm/v\b|\bv/m\b|\bgender (doesn'?t|does not) matter\b|\bgeslacht maakt niet uit\b")
 
 
+_ZOEK = re.compile(r"\b(zoeken|zoekt|zoek|looking for|op zoek naar|searching for|gezocht|wanted)\b")
+_MAN = re.compile(r"\b(man|mannen|mannelijke?|jongen|jongens|gozer|kerel|heer|guy|guys|male|boy|boys|men)\b")
+
+
 def zoekt_alleen_vrouw(tekst: str) -> bool:
     t = tekst.lower()
-    return not _IEDEREEN.search(t) and any(p.search(t) for p in _ALLEEN_VROUW)
+    if _IEDEREEN.search(t):
+        return False
+    # Zoeken ze in dezelfde zin ook een man ("een 6e en 7e vrouw en een 8e man"), dan is het een gemengde
+    # vraag. Welke kamer voor wie is, staat dan per kamer in het geslachtsveld van SSH.
+    for zin in re.split(r"[.!?\n]", t):
+        zoek = _ZOEK.search(zin)
+        if zoek and _MAN.search(zin, zoek.end()):
+            return False
+    return any(p.search(t) for p in _ALLEEN_VROUW)
 
 
 def detailfilter(k: Kamer, f: Filters) -> str | None:
