@@ -71,8 +71,11 @@ class Beoordelaar:
         if client is None and api_key:
             import anthropic
 
-            client = anthropic.Anthropic(api_key=api_key, max_retries=2, timeout=120)
+            client = anthropic.Anthropic(api_key=api_key, max_retries=1, timeout=45)
         self.client = client
+        # Ligt de API eruit, dan na een paar fouten stoppen met vragen: anders duurt een ronde uren en mis
+        # je de deadline van middernacht.
+        self.fouten = 0
 
     @property
     def aan(self) -> bool:
@@ -83,7 +86,7 @@ class Beoordelaar:
 
     def beoordeel(self, k: Kamer) -> Oordeel | None:
         """None als het niet lukt of als er geen verhaaltje is; de bot gaat dan door zonder oordeel."""
-        if not self.aan or not k.verhaaltje.strip():
+        if not self.aan or not k.verhaaltje.strip() or self.fouten >= 3:
             return None
         h = self._hash(k)
         rij = self.db.execute("SELECT oordeel FROM beoordeling WHERE flow_id=? AND hash=?", (str(k.flow_id), h)).fetchone()
@@ -106,6 +109,7 @@ class Beoordelaar:
             )
         except Exception as e:  # netwerk, limiet, sleutel: nooit de ronde laten vallen
             log.warning("Beoordeling %s mislukt: %s", k.flow_id, type(e).__name__)
+            self.fouten += 1
             return None
         if r.stop_reason == "refusal" or r.parsed_output is None:
             log.warning("Beoordeling %s: geen uitslag (%s)", k.flow_id, r.stop_reason)

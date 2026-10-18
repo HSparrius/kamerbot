@@ -32,6 +32,8 @@ units() { # systemd-units uit deze versie neerzetten, zodat /update ook die wijz
 install_rev() { # zet versie $1 neer en herstart; 0 als hij binnen WAIT_S draait
   git -C "$APP" reset -q --hard "$1" || return 1
   "$APP/.venv/bin/pip" install -q -r "$APP/requirements.txt" || return 1
+  # Een nieuwe Playwright-versie wil een nieuwe Chrome; zonder die faalt het inloggen pas dagen later.
+  "$APP/.venv/bin/playwright" install chromium >/dev/null || return 1
   units
   local t0
   t0=$(date +%s)

@@ -6,6 +6,8 @@ import html
 import json
 import logging
 
+import httpx
+
 from . import selectie
 from .agenda import Agenda, AgendaFout, afspraak, afspraak_id
 from .beoordeling import Beoordelaar
@@ -111,13 +113,16 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         agenda = maak_agenda(cfg, db, tg)
 
     kandidaten, nieuw, gereageerd = [], [], []
-    for k in ssh.aanbod():
-        if selectie.basisfilter(k, cfg.filters):
-            continue
+    aanbod = ssh.aanbod()
+    for k in aanbod:
+        # Altijd de details ophalen: ook een kamer buiten je filters kan een reactie van je hebben
+        # (zelf geplaatst), en die moet de bot zien om hem in te trekken of uit je agenda te halen.
         ssh.details(k)
         if k.al_gereageerd:
             k.oordeel = beoordelaar.beoordeel(k)  # voor de tijd in de agenda
             gereageerd.append(k)
+            continue
+        if selectie.basisfilter(k, cfg.filters):
             continue
         reden = selectie.detailfilter(k, cfg.filters)
         if not reden:
@@ -138,17 +143,31 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             for k in nieuw:
                 db.zet("ssh", str(k.flow_id), "gemeld")
 
-    # Gezakt tot buiten de kansgrens: alleen intrekken als je die plek nodig hebt voor een kamer waar je
-    # wél kans maakt (Hidde, 18 okt 2026). Zolang er plekken vrij zijn, blijft de reactie gewoon staan.
+    # Eerst uitzoeken op welke kamers je echt kunt reageren (SSH zegt ja), snelst verlopend eerst.
     vrij = cfg.max_actief - ssh.actieve_reacties()
-    wachtend = [k for k in selectie.kies(kandidaten, len(kandidaten), cfg)
-                if not db.heeft("ssh", str(k.flow_id), "gereageerd")]
-    nodig = max(len(wachtend) - vrij, 0)
-    ingetrokken = 0
     kansloos = sorted(selectie.kansloos(gereageerd, cfg), key=lambda k: k.positie, reverse=True)
-    for k in kansloos[:nodig]:
+    mogelijk = []
+    for k in selectie.kies(kandidaten, len(kandidaten), cfg):
+        if len(mogelijk) >= max(vrij, 0) + len(kansloos):
+            break
+        if db.heeft("ssh", str(k.flow_id), "gereageerd"):
+            continue
+        mag, reden = ssh.kan_reageren(k)
+        if not mag or "mismatch" in reden:
+            log.info("SSH zegt nee op %s: %s", k.adres, reden)
+            continue
+        mogelijk.append(k)
+
+    # Gezakt tot buiten de kansgrens: alleen intrekken als je die plek nodig hebt voor een kamer waar je
+    # wél kans maakt en waar SSH je op laat reageren (Hidde, 18 okt 2026). Anders blijft de reactie staan.
+    ingetrokken = 0
+    for k in kansloos[:max(len(mogelijk) - vrij, 0)]:
         if cfg.auto_reageren:
-            ssh.trek_in(k)
+            try:
+                ssh.trek_in(k)
+            except httpx.HTTPStatusError as e:
+                log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
+                continue
             ingetrokken += 1
             vrij += 1
             gereageerd.remove(k)
@@ -163,28 +182,37 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         ):
             db.zet("ssh", str(k.flow_id), sleutel)
 
-    keuze = selectie.kies(kandidaten, vrij, cfg)
+    keuze = mogelijk[:max(vrij, 0)]
     log.info("%d kandidaten, %d plekken vrij, %d gekozen", len(kandidaten), vrij, len(keuze))
 
     for k in keuze:
-        if db.heeft("ssh", str(k.flow_id), "gereageerd"):
-            continue
-        mag, reden = ssh.kan_reageren(k)
-        if not mag or "mismatch" in reden:
-            log.info("SSH zegt nee op %s: %s", k.adres, reden)
-            continue
         if not cfg.auto_reageren:
             if not db.heeft("ssh", str(k.flow_id), "voorstel"):
                 if tg.stuur(f"👉 Zou nu reageren op:\n{regel(k)}\n(AUTO_REAGEREN staat uit)"):
                     db.zet("ssh", str(k.flow_id), "voorstel")
             continue
-        ssh.reageer(k)
+        try:
+            ssh.reageer(k)
+        except httpx.HTTPStatusError as e:
+            # Eén kamer die net dichtging of weigert, mag de rest van de ronde niet tegenhouden.
+            log.warning("Reageren op %s mislukt: HTTP %s", k.adres, e.response.status_code)
+            if not db.heeft("ssh", str(k.flow_id), "reageerfout"):
+                tg.stuur(f"⚠️ Reageren lukte niet (HTTP {e.response.status_code}):\n{regel(k)}")
+                db.zet("ssh", str(k.flow_id), "reageerfout")
+            continue
         db.zet("ssh", str(k.flow_id), "gereageerd")
         tg.stuur(f"✅ Gereageerd op:\n{regel(k)}")
         gereageerd.append(k)
 
     for k in gereageerd:
         agenda_bij(agenda, db, tg, k)
+    # Reactie weg (zelf ingetrokken op de site) terwijl de kamer nog in het aanbod staat: afspraak weg.
+    # Staat de kamer niet meer in het aanbod, dan is de deadline voorbij en kan de avond nog doorgaan.
+    nog_actief = {k.flow_id for k in gereageerd}
+    for k in aanbod:
+        if k.flow_id not in nog_actief and db.db.execute(
+                "SELECT 1 FROM kamers WHERE bron='agenda' AND id=?", (str(k.flow_id),)).fetchone():
+            agenda_weg(agenda, db, tg, k)
 
     samenvatting = f"{len(kandidaten)} kandidaten, {vrij} plekken vrij, {len(keuze)} gekozen"
     if ingetrokken:
