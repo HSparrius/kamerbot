@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 
 from pydantic import BaseModel, Field
@@ -21,7 +22,9 @@ from .ssh import Kamer
 
 log = logging.getLogger(__name__)
 
-MODEL = "claude-opus-5-5"
+# Sonnet is ruim slim genoeg voor een verhaaltje en veel goedkoper dan Opus. Overschrijven kan met
+# KAMERBOT_MODEL in .env.
+MODEL = os.environ.get("KAMERBOT_MODEL", "claude-sonnet-5-5")
 
 STANDAARD_PROFIEL = (
     "Nederlandstalige mannelijke student in Utrecht, lid van een studentenroeivereniging en een heerendispuut. "

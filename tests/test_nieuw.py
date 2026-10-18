@@ -52,7 +52,7 @@ def test_beoordeling_wordt_bewaard_per_verhaaltje(tmp_path):
     assert b.beoordeel(k).cijfer == 7
     assert b.beoordeel(k).hospiteer_begin == "20:00"
     assert claude.aantal == 1
-    assert claude.kw["model"] == "claude-opus-5-5" and claude.kw["fallbacks"] == "default"
+    assert claude.kw["model"] == "claude-sonnet-5-5" and claude.kw["fallbacks"] == "default"
     k.verhaaltje += " Nieuw: hospiteren om 21:00."
     b.beoordeel(k)
     assert claude.aantal == 2
