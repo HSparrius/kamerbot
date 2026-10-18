@@ -207,3 +207,24 @@ def test_mislukte_ronde_wordt_na_10_minuten_opnieuw_geprobeerd(tmp_path):
     assert p.opnieuw(nu, "avond") == nu + timedelta(minutes=10)
     assert p.aan_de_beurt(nu + timedelta(minutes=10)) == "avond"
     assert p.opnieuw(datetime(2026, 10, 18, 23, 28, tzinfo=NL), "avond") is None
+
+
+def test_onleesbare_sleutel_geeft_agendafout():
+    import pytest
+
+    from kamerbot.agenda import AgendaFout, lees_sleutel
+
+    kapot = json.loads(sleutel())
+    kapot["private_key"] = kapot["private_key"].replace("\n", "n")  # zoals systemd het inleest
+    with pytest.raises(AgendaFout):
+        lees_sleutel(json.dumps(kapot))
+
+
+def test_env_wordt_letterlijk_gelezen(tmp_path, monkeypatch):
+    from dotenv import dotenv_values
+
+    key = json.loads(sleutel())
+    (tmp_path / ".env").write_text("GOOGLE_SERVICE_ACCOUNT_JSON=" + json.dumps(key) + "\n")
+    from kamerbot.agenda import lees_sleutel
+
+    assert lees_sleutel(dotenv_values(tmp_path / ".env")["GOOGLE_SERVICE_ACCOUNT_JSON"])["client_email"]

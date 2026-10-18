@@ -9,9 +9,16 @@ import random
 import sys
 import time
 
-from .config import Config
-from .ronde import RondeMislukt, ronde
-from .ssh import NietIngelogd
+from dotenv import load_dotenv
+
+# .env zelf inlezen, letterlijk zoals de ritbot. systemd's EnvironmentFile haalt de backslashes uit
+# waarden zonder aanhalingstekens, en dan is de "\n" in de agenda-sleutel weg. Vóór config importeren,
+# want daar worden sommige waarden al bij het laden gelezen.
+load_dotenv(".env", override=True)
+
+from .config import Config  # noqa: E402
+from .ronde import RondeMislukt, ronde  # noqa: E402
+from .ssh import NietIngelogd  # noqa: E402
 
 log = logging.getLogger("kamerbot")
 

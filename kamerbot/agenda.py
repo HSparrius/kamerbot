@@ -37,7 +37,10 @@ def _b64(data: bytes) -> str:
 
 
 def signed_jwt(info: dict[str, Any], nu: float) -> str:
-    key = serialization.load_pem_private_key(str(info["private_key"]).encode(), password=None)
+    try:
+        key = serialization.load_pem_private_key(str(info["private_key"]).encode(), password=None)
+    except ValueError as e:
+        raise AgendaFout("sleutel van het service-account is onleesbaar (GOOGLE_SERVICE_ACCOUNT_JSON)") from e
     if not isinstance(key, rsa.RSAPrivateKey):
         raise AgendaFout("sleutel van het service-account is geen RSA-sleutel")
     header = {"alg": "RS256", "typ": "JWT"}
@@ -56,6 +59,7 @@ def lees_sleutel(raw: str) -> dict[str, Any]:
         raise AgendaFout("GOOGLE_SERVICE_ACCOUNT_JSON is geen geldige JSON") from e
     if not isinstance(info, dict) or not info.get("client_email") or not info.get("private_key"):
         raise AgendaFout("GOOGLE_SERVICE_ACCOUNT_JSON mist client_email of private_key")
+    signed_jwt(info, time.time())  # meteen bij de start zeggen als de sleutel niet klopt
     return info
 
 
