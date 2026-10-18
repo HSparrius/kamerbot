@@ -193,9 +193,24 @@ def test_ronde_zonder_auto_trekt_niet_in(tmp_path):
         def beoordeel(self, k):
             return None
 
+    ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=35), kamer(2)], actief=7)
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=FakeAgenda())
     assert ssh.ingetrokken == []
     assert any("Overweeg" in b for b in tg.berichten)
+
+
+def test_kansloze_reactie_blijft_staan_zolang_er_plek_is(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=31), kamer(2)], actief=3)
+
+    class B:
+        def beoordeel(self, k):
+            return None
+
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=B(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == []
+    assert ssh.gereageerd == [2]
 
 
 # ------------------------------------------------------------------ dienst
