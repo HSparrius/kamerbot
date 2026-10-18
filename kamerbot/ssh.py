@@ -36,6 +36,8 @@ class Kamer:
     aantal_reacties: int | None = None
     bezichtiging: str | None = None
     al_gereageerd: bool = False
+    # Uitslag van beoordeling.py (Oordeel), als het taalmodel aan staat.
+    oordeel: object | None = None
 
     @property
     def url(self) -> str:
@@ -156,4 +158,11 @@ class SSHClient:
         )
         if r.status_code in (401, 403):
             raise NietIngelogd("reageren")
+        r.raise_for_status()
+
+    def trek_in(self, k: Kamer) -> None:
+        """Reactie intrekken (uit HAR 18 okt 2026: DELETE op hetzelfde pad als reageren)."""
+        r = self.http.delete(f"/api/v1/reactions/{k.flow_id}", headers={"referer": f"{BASE}/nl/mijn-ssh/reacties/{k.flow_id}"})
+        if r.status_code in (401, 403):
+            raise NietIngelogd("intrekken")
         r.raise_for_status()

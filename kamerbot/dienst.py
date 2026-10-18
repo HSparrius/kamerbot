@@ -2,7 +2,9 @@
 
 Twee rondes per dag, elk op een willekeurig moment binnen een venster (Hidde, 18 okt 2026):
 - overdag tussen 9:00 en 18:00;
-- 's avonds tussen 22:00 en 23:55, om te kijken of je nog kans maakt vóór de deadline van 00:00.
+- 's avonds tussen 22:00 en 23:30, om te kijken of je nog kans maakt vóór de deadline van 00:00.
+Mislukt een ronde (bijv. inloggen), dan probeert de bot het 10 minuten later opnieuw, zolang dat nog
+binnen het venster valt.
 
 Commando's (alleen vanuit je eigen chat): /update, /status, /nu.
 
@@ -18,7 +20,7 @@ from datetime import time as tijd
 
 from .config import Config
 from .opslag import Opslag
-from .ronde import ronde
+from .ronde import RondeMislukt, ronde
 from .ssh import NL, NietIngelogd
 from .telegram import Telegram
 
@@ -26,8 +28,11 @@ log = logging.getLogger(__name__)
 
 VENSTERS = {
     "overdag": (tijd(9, 0), tijd(18, 0)),
-    "avond": (tijd(22, 0), tijd(23, 55)),
+    "avond": (tijd(22, 0), tijd(23, 30)),
 }
+OPNIEUW_NA = timedelta(minutes=10)
+SPELING = timedelta(minutes=4)
+
 
 
 def kies_moment(dag: date, venster: tuple[tijd, tijd], rng: random.Random) -> datetime:
@@ -64,13 +69,24 @@ class Planning:
         """Het venster waarvan de ronde nu moet draaien, of None. Een gemist venster wordt niet ingehaald."""
         for venster, (_, eind) in VENSTERS.items():
             m, gedaan = self.moment(nu.date(), venster)
-            if not gedaan and m <= nu <= datetime.combine(nu.date(), eind, NL) + timedelta(minutes=4):
+            if not gedaan and m <= nu <= datetime.combine(nu.date(), eind, NL) + SPELING:
                 return venster
         return None
 
     def klaar(self, dag: date, venster: str) -> None:
         self.db.execute("UPDATE planning SET gedaan=1 WHERE dag=? AND venster=?", (dag.isoformat(), venster))
         self.db.commit()
+
+    def opnieuw(self, nu: datetime, venster: str) -> datetime | None:
+        """Na een mislukte ronde: 10 minuten later nog een keer, als dat binnen het venster valt."""
+        m = nu + OPNIEUW_NA
+        if m > datetime.combine(nu.date(), VENSTERS[venster][1], NL) + SPELING:
+            return None
+        self.db.execute(
+            "UPDATE planning SET moment=?, gedaan=0 WHERE dag=? AND venster=?", (m.isoformat(), nu.date().isoformat(), venster)
+        )
+        self.db.commit()
+        return m
 
     def volgende(self, nu: datetime) -> datetime | None:
         for dag in (nu.date(), nu.date() + timedelta(days=1)):
@@ -102,15 +118,23 @@ class Dienst:
             venster = self.planning.aan_de_beurt(nu)
             if venster:
                 self.planning.klaar(nu.date(), venster)
-                self.doe_ronde(f"ronde {venster}")
+                if not self.doe_ronde(f"ronde {venster}"):
+                    m = self.planning.opnieuw(nu, venster)
+                    if m:
+                        self.laatste += f" (nieuwe poging {m:%H:%M})"
             for bericht in self.tg.berichten(self.offset, wacht_s=30):
                 self.offset = bericht["update_id"] + 1
                 self.verwerk(bericht.get("message") or {})
 
-    def doe_ronde(self, naam: str) -> None:
+    def doe_ronde(self, naam: str) -> bool:
+        """True als de ronde gelukt is."""
         log.info("Start %s", naam)
+        gelukt = False
         try:
             self.laatste = f"{datetime.now(NL):%a %d-%m %H:%M}: {ronde(self.cfg)}"
+            gelukt = True
+        except RondeMislukt as e:
+            self.laatste = f"{datetime.now(NL):%a %d-%m %H:%M}: {e}"
         except NietIngelogd:
             (self.data / "ssh-cookies.json").unlink(missing_ok=True)
             self.laatste = "sessie verlopen, volgende ronde logt opnieuw in"
@@ -119,6 +143,7 @@ class Dienst:
             self.laatste = f"mislukt: {type(e).__name__}"
             self.tg.stuur(f"❌ Kamerbot: {naam} mislukt ({type(e).__name__}). Kijk op de VPS: journalctl -u kamerbot -n 50")
         log.info("Klaar: %s", self.laatste)
+        return gelukt
 
     # ------------------------------------------------------------------ telegram
     def verwerk(self, bericht: dict) -> None:
