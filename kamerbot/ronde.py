@@ -120,6 +120,18 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         ssh.details(k)
         if k.al_gereageerd:
             k.oordeel = beoordelaar.beoordeel(k)  # voor de tijd in de agenda
+            # Zelf gereageerd en blijkt het huis toch iets anders te zoeken: meteen intrekken. Reacties die
+            # je zelf op de site plaatste laat de bot staan; dat is jouw keuze.
+            fout = selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k)
+            if fout and cfg.auto_reageren and db.heeft("ssh", str(k.flow_id), "gereageerd"):
+                try:
+                    ssh.trek_in(k)
+                except httpx.HTTPStatusError as e:
+                    log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
+                else:
+                    agenda_weg(agenda, db, tg, k)
+                    tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}):\n{regel(k)}")
+                    continue
             gereageerd.append(k)
             continue
         if selectie.basisfilter(k, cfg.filters):

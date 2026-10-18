@@ -4,7 +4,7 @@ from pathlib import Path
 
 from kamerbot import selectie
 from kamerbot.config import Config, Filters
-from kamerbot.ssh import kamers_uit_lijst, vul_details_aan
+from kamerbot.ssh import Kamer, kamers_uit_lijst, vul_details_aan
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -99,3 +99,19 @@ def test_kansloos_na_zakken():
     assert selectie.kansloos([k], cfg) == [k]
     k.positie = 30
     assert selectie.kansloos([k], cfg) == []
+
+
+def test_verhaaltje_dat_alleen_een_vrouw_zoekt():
+    zoekt = selectie.zoekt_alleen_vrouw
+    assert zoekt("Wij zijn een gezellig huis en zoeken alleen een vrouw als nieuwe huisgenoot.")
+    assert zoekt("We are looking for a female housemate!")
+    assert zoekt("Wij zoeken een nieuwe meid voor ons huis")
+    assert zoekt("Gezellig meidenhuis zoekt nieuwe bewoonster")
+    assert zoekt("Nieuwe huisgenote (v) gezocht")
+    assert not zoekt("We zoeken een leuke huisgenoot, man of vrouw maakt niet uit.")
+    assert not zoekt("Wij zoeken een gezellige huisgenoot die mee-eet. M/V")
+    assert not zoekt("Ons huis bestaat uit drie jongens en twee meiden.")
+    k = Kamer(flow_id=1, wocas_id="1", soort="Hospiteren", type="Kamer", brutto_huur=500,
+              deadline=datetime.now(timezone.utc), geslacht=None,
+              verhaaltje="Wij zoeken alleen een vrouw!")
+    assert selectie.detailfilter(k, Filters()) == "verhaaltje: zoekt een vrouw"
