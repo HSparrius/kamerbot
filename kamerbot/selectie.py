@@ -63,5 +63,11 @@ def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime 
         and k.deadline > nu
         and (k.positie is None or k.positie <= cfg.max_positie)
     ]
-    rijp.sort(key=score, reverse=True)
+    # Eerst wat het snelst verloopt, binnen dezelfde deadline de hoogste score.
+    rijp.sort(key=lambda k: (k.deadline, -score(k)))
     return rijp[: max(vrije_plekken, 0)]
+
+
+def kansloos(gereageerd: list[Kamer], cfg: Config) -> list[Kamer]:
+    """Kamers waar je al op reageerde maar inmiddels buiten de kansgrens bent gezakt."""
+    return [k for k in gereageerd if k.positie and k.positie > cfg.max_positie]

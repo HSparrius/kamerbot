@@ -1,0 +1,15 @@
+[Unit]
+Description=Kamerbot (SSH-kamers in Utrecht)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=@APP@
+EnvironmentFile=@APP@/.env
+ExecStart=@APP@/.venv/bin/python -m kamerbot dienst
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

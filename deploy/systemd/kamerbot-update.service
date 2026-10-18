@@ -1,0 +1,7 @@
+[Unit]
+Description=Kamerbot bijwerken (gestart door /update)
+
+[Service]
+Type=oneshot
+ExecStart=@APP@/deploy/update.sh
+TimeoutStartSec=10min

@@ -5,10 +5,12 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 
 BASE = "https://www.sshxl.nl"
+NL = ZoneInfo("Europe/Amsterdam")
 
 
 class NietIngelogd(Exception):
@@ -45,12 +47,14 @@ class Kamer:
 
 
 def _datum(s: str) -> datetime:
-    # SSH geeft zeven decimalen en soms geen tijdzone; behandel als UTC.
+    # SSH geeft zeven decimalen. Met "Z" is het UTC, zonder is het Nederlandse tijd
+    # (ExpireBy "…T23:59:59" = je kunt reageren tot middernacht).
+    utc = s.endswith("Z")
     s = s.rstrip("Z")
     if "." in s:
         hoofd, frac = s.split(".", 1)
         s = f"{hoofd}.{frac[:6]}"
-    return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(s).replace(tzinfo=timezone.utc if utc else NL)
 
 
 def kamers_uit_lijst(offers: list[dict], details: list[dict]) -> list[Kamer]:
@@ -82,9 +86,10 @@ def vul_details_aan(k: Kamer, offer: dict) -> Kamer:
     k.geslacht = vloer.get("PreferenceGender")
     k.verhaaltje = vloer.get("Description") or ""
     k.aantal_reacties = offer.get("ApplicantCount")
-    # PotentialPosition = waar je zou staan; CurrentPosition > 0 = je hebt al gereageerd.
-    k.positie = offer.get("PotentialPosition") or None
+    # PotentialPosition = waar je zou staan; CurrentPosition > 0 = je hebt al gereageerd,
+    # en dan is dat je actuele plek (die kan zakken als mensen met meer inschrijftijd reageren).
     k.al_gereageerd = bool(offer.get("CurrentPosition"))
+    k.positie = (offer.get("CurrentPosition") if k.al_gereageerd else offer.get("PotentialPosition")) or None
     k.bezichtiging = offer.get("ViewingDate")
     return k
 
