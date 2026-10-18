@@ -55,11 +55,14 @@ def ronde(cfg: Config) -> None:
         kandidaten.append(k)
         if not db.heeft("ssh", str(k.flow_id), "gemeld"):
             nieuw.append(k)
-            db.zet("ssh", str(k.flow_id), "gemeld")
 
     if nieuw:
         nieuw.sort(key=selectie.score, reverse=True)
-        tg.stuur(f"🏠 {len(nieuw)} nieuwe SSH-kamer(s):\n" + "\n".join(f"{selectie.score(k)} · {regel(k)}" for k in nieuw[:20]))
+        verstuurd = tg.stuur(f"🏠 {len(nieuw)} nieuwe SSH-kamer(s):\n" + "\n".join(f"{selectie.score(k)} · {regel(k)}" for k in nieuw[:20]))
+        # Alleen als gemeld markeren als Telegram het echt heeft afgeleverd.
+        if verstuurd:
+            for k in nieuw:
+                db.zet("ssh", str(k.flow_id), "gemeld")
 
     vrij = cfg.max_actief - ssh.actieve_reacties()
     keuze = selectie.kies(kandidaten, vrij, cfg)
@@ -74,8 +77,8 @@ def ronde(cfg: Config) -> None:
             continue
         if not cfg.auto_reageren:
             if not db.heeft("ssh", str(k.flow_id), "voorstel"):
-                tg.stuur(f"👉 Zou nu reageren op:\n{regel(k)}\n(AUTO_REAGEREN staat uit)")
-                db.zet("ssh", str(k.flow_id), "voorstel")
+                if tg.stuur(f"👉 Zou nu reageren op:\n{regel(k)}\n(AUTO_REAGEREN staat uit)"):
+                    db.zet("ssh", str(k.flow_id), "voorstel")
             continue
         ssh.reageer(k)
         db.zet("ssh", str(k.flow_id), "gereageerd")
@@ -84,6 +87,8 @@ def ronde(cfg: Config) -> None:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # httpx logt elke URL, inclusief de Telegram-token. Alleen waarschuwingen tonen.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     try:
         ronde(Config())
     except NietIngelogd:

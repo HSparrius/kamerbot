@@ -31,7 +31,7 @@ def detailfilter(k: Kamer, f: Filters) -> str | None:
     """Filter op wat pas op de kamerpagina staat."""
     if k.al_gereageerd:
         return "al gereageerd"
-    if k.geslacht not in f.toegestane_geslachten:
+    if (k.geslacht or None) not in f.toegestane_geslachten:
         return f"zoekt {k.geslacht}"
     tekst = k.verhaaltje.lower()
     for w in f.uitsluit_woorden:

@@ -66,3 +66,9 @@ def test_slechte_positie_wordt_overgeslagen():
     k.positie = 30
     nu = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
     assert selectie.kies([k], 5, cfg, nu) == []
+
+
+def test_leeg_geslacht_telt_als_geen_voorkeur():
+    k = kamers()[1478608]
+    k.geslacht = ""
+    assert selectie.detailfilter(k, Filters()) is None
