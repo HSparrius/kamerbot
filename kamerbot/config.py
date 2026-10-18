@@ -13,7 +13,7 @@ class Filters:
         "Ina Boudier-Bakkerlaan", "Pythagoraslaan",
         "Cambridgelaan", "Bolognalaan", "Leuvenlaan", "Leuvenplein", "Salamancapad", "Padualaan",
         "Heidelberglaan", "Uppsalalaan", "Budapestlaan", "Princetonlaan", "Princetonplein",
-        "Sorbonnelaan", "Yalelaan", "Kyotolaan", "Harvardlaan", "Coimbrapad", "Oxfordlaan",
+        "Sorbonnelaan", "Yalelaan", "Kyotolaan", "Harvardlaan", "Coimbrapad", "Oxfordlaan", "Bisschopssteeg",
     )
     # Wat SSH bij PreferenceGender kan zetten; alles behalve dit wordt overgeslagen.
     toegestane_geslachten: tuple[str | None, ...] = (None, "none", "male")
