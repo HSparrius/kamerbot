@@ -324,3 +324,26 @@ def test_eigen_reactie_op_vrouwenhuis_wordt_ingetrokken(tmp_path):
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
     assert ssh.ingetrokken == [6]  # die van de bot; je eigen reactie blijft staan
     assert any("zoekt een vrouw" in b for b in tg.berichten)
+
+
+def test_na_intrekken_door_bot_mag_hij_later_weer_reageren(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    db = Opslag(tmp_path / "kamerbot.db")
+    db.zet("ssh", "6", "gereageerd")
+    k = kamer(6, al_gereageerd=True, verhaaltje="Wij zoeken alleen een vrouw.")
+    ronde(cfg, ssh=FakeSSH([k], actief=1), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert not db.heeft("ssh", "6", "gereageerd")
+    # Het filter blijkt fout en de kamer past toch: volgende ronde reageert hij opnieuw.
+    ssh = FakeSSH([kamer(6, verhaaltje="Wij zoeken een vrouw en een man.")], actief=0)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [6]
+
+
+def test_zelf_ingetrokken_reactie_van_de_bot_wordt_niet_opnieuw_geplaatst(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "6", "gereageerd")
+    ssh = FakeSSH([kamer(6)], actief=0)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == []

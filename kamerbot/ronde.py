@@ -102,6 +102,13 @@ def agenda_weg(agenda: Agenda | None, db: Opslag, tg: Telegram, k: Kamer) -> Non
     db.db.commit()
 
 
+def vergeet_reactie(db: Opslag, k: Kamer) -> None:
+    """Na intrekken door de bot: niet meer als gereageerd onthouden, anders slaat hij de kamer voorgoed over,
+    ook als hij later wél weer past (bijv. na een filterfout, zoals Otterstraat 2B k10 op 18 okt 2026).
+    Trek je zelf in op de site, dan blijft "gereageerd" staan en reageert de bot niet opnieuw."""
+    db.wis("ssh", str(k.flow_id), "gereageerd")
+
+
 def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
           beoordelaar: Beoordelaar | None = None, agenda: Agenda | None = None) -> str:
     """Geeft een korte samenvatting terug (voor /status en het log). Gooit RondeMislukt als hij niet kan draaien."""
@@ -129,6 +136,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
                 except httpx.HTTPStatusError as e:
                     log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
                 else:
+                    vergeet_reactie(db, k)
                     agenda_weg(agenda, db, tg, k)
                     tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}):\n{regel(k)}")
                     continue
@@ -180,6 +188,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             except httpx.HTTPStatusError as e:
                 log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
                 continue
+            vergeet_reactie(db, k)
             ingetrokken += 1
             vrij += 1
             gereageerd.remove(k)

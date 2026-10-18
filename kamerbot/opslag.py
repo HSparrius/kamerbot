@@ -24,3 +24,7 @@ class Opslag:
     def zet(self, bron: str, id: str, status: str) -> None:
         self.db.execute("INSERT OR IGNORE INTO kamers (bron, id, status) VALUES (?, ?, ?)", (bron, id, status))
         self.db.commit()
+
+    def wis(self, bron: str, id: str, status: str) -> None:
+        self.db.execute("DELETE FROM kamers WHERE bron=? AND id=? AND status=?", (bron, id, status))
+        self.db.commit()
