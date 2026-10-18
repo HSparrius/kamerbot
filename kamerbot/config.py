@@ -1,0 +1,41 @@
+"""Instellingen. Geheimen komen uit de omgeving (.env op de VPS), filters staan hier."""
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass
+class Filters:
+    max_brutto_huur: float = 1000.0
+    steden: tuple[str, ...] = ("UTRECHT",)
+    # Straten waar je niet wilt wonen (IBB en de sterrenflats).
+    uitgesloten_straten: tuple[str, ...] = ("Ina Boudier-Bakkerlaan", "Pythagoraslaan")
+    # Wat SSH bij PreferenceGender kan zetten; alles behalve dit wordt overgeslagen.
+    toegestane_geslachten: tuple[str | None, ...] = (None, "none", "male")
+    # Woorden in het verhaaltje waardoor een kamer afvalt (kleine letters).
+    uitsluit_woorden: tuple[str, ...] = (
+        "kamerzoekende (v)",
+        "alleen vrouwen",
+        "only women",
+        "female only",
+        "english speaking house",
+        "international house",
+    )
+
+
+@dataclass
+class Config:
+    ssh_email: str = field(default_factory=lambda: os.environ.get("SSH_EMAIL", ""))
+    ssh_password: str = field(default_factory=lambda: os.environ.get("SSH_PASSWORD", ""))
+    telegram_token: str = field(default_factory=lambda: os.environ.get("TELEGRAM_TOKEN", ""))
+    telegram_chat_id: str = field(default_factory=lambda: os.environ.get("TELEGRAM_CHAT_ID", ""))
+    data_dir: Path = field(default_factory=lambda: Path(os.environ.get("KAMERBOT_DATA", "data")))
+    # Volgens Hidde maximaal 7 reacties tegelijk; de bot vraagt het actuele aantal op bij SSH.
+    max_actief: int = int(os.environ.get("SSH_MAX_ACTIEF", "7"))
+    # Pas reageren als de deadline binnen dit aantal uur valt (zie selectie.py).
+    reageer_venster_uur: float = float(os.environ.get("REAGEER_VENSTER_UUR", "18"))
+    # Alleen reageren als je binnen deze positie zit.
+    max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "15"))
+    # Op False: alleen melden via Telegram, niets versturen.
+    auto_reageren: bool = os.environ.get("AUTO_REAGEREN", "0") == "1"
+    filters: Filters = field(default_factory=Filters)

@@ -1,0 +1,866 @@
+[
+ {
+  "EenheidNummer": 36400093,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 67610,
+    "Straatnaam": "Bisschopssteeg",
+    "Nummer": "141",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3584 SC",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 36400093,
+    "TotOpp": 29.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 38800182,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 115500,
+    "Straatnaam": "Stelplaats",
+    "Nummer": "182",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3551 JB",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 38800182,
+    "TotOpp": 28.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 35050483,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 66660,
+    "Straatnaam": "Salamancapad",
+    "Nummer": "397",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k22",
+    "Postcode": "3584 DX",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 35050483,
+    "TotOpp": 19.0,
+    "TotOppGem": 29.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 20209045,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 63727,
+    "Straatnaam": "Ina Boudier-Bakkerlaan",
+    "Nummer": "89",
+    "Letter": null,
+    "Toevoeging": "3",
+    "Locatie": "k477",
+    "Postcode": "3582 XD",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 20209045,
+    "TotOpp": 12.0,
+    "TotOppGem": 32.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 20409017,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 60747,
+    "Straatnaam": "Van Lieflandlaan",
+    "Nummer": "78",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k21",
+    "Postcode": "3571 AE",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 20409017,
+    "TotOpp": 14.0,
+    "TotOppGem": 15.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 36400269,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 67900,
+    "Straatnaam": "Bisschopssteeg",
+    "Nummer": "501",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k3",
+    "Postcode": "3584 SJ",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 36400269,
+    "TotOpp": 17.0,
+    "TotOppGem": 28.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 32702095,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 55733,
+    "Straatnaam": "Otterstraat",
+    "Nummer": "2",
+    "Letter": "B",
+    "Toevoeging": null,
+    "Locatie": "k9",
+    "Postcode": "3513 CM",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 32702095,
+    "TotOpp": 13.0,
+    "TotOppGem": 29.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 32702105,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 55720,
+    "Straatnaam": "Otterstraat",
+    "Nummer": "2",
+    "Letter": "B",
+    "Toevoeging": null,
+    "Locatie": "k10",
+    "Postcode": "3513 CM",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 32702105,
+    "TotOpp": 13.0,
+    "TotOppGem": 29.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 50041482,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 67258,
+    "Straatnaam": "Leuvenplein",
+    "Nummer": "148",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k2",
+    "Postcode": "3584 LH",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 50041482,
+    "TotOpp": 19.0,
+    "TotOppGem": 16.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 39268002,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 116142,
+    "Straatnaam": "Stelplaats",
+    "Nummer": "680",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k2",
+    "Postcode": "3551 JB",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 39268002,
+    "TotOpp": 13.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 21001064,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 68397,
+    "Straatnaam": "Warande",
+    "Nummer": "23",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k087",
+    "Postcode": "3705 ZB",
+    "Plaats": "ZEIST",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 21001064,
+    "TotOpp": 15.0,
+    "TotOppGem": 31.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 46200418,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 65166,
+    "Straatnaam": "Pythagoraslaan",
+    "Nummer": "113",
+    "Letter": "G",
+    "Toevoeging": null,
+    "Locatie": "k4",
+    "Postcode": "3584 BB",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 46200418,
+    "TotOpp": 15.0,
+    "TotOppGem": 35.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 46200470,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 65225,
+    "Straatnaam": "Pythagoraslaan",
+    "Nummer": "117",
+    "Letter": "B",
+    "Toevoeging": null,
+    "Locatie": "k2",
+    "Postcode": "3584 BB",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 46200470,
+    "TotOpp": 20.0,
+    "TotOppGem": 36.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 46200553,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 65302,
+    "Straatnaam": "Pythagoraslaan",
+    "Nummer": "119",
+    "Letter": "D",
+    "Toevoeging": null,
+    "Locatie": "k7",
+    "Postcode": "3584 BB",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 46200553,
+    "TotOpp": 19.0,
+    "TotOppGem": 27.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 32702150,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 55725,
+    "Straatnaam": "Otterstraat",
+    "Nummer": "2",
+    "Letter": "B",
+    "Toevoeging": null,
+    "Locatie": "k15",
+    "Postcode": "3513 CM",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 32702150,
+    "TotOpp": 12.0,
+    "TotOppGem": 29.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 13636001,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 64529,
+    "Straatnaam": "Mauritsstraat",
+    "Nummer": "57",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k01",
+    "Postcode": "3583 HJ",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 13636001,
+    "TotOpp": 19.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 26910020,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 65696,
+    "Straatnaam": "Cambridgelaan",
+    "Nummer": "519",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k11",
+    "Postcode": "3584 DG",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 26910020,
+    "TotOpp": 19.0,
+    "TotOppGem": 11.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 26911201,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 66909,
+    "Straatnaam": "Cambridgelaan",
+    "Nummer": "285",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k4",
+    "Postcode": "3584 DZ",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 26911201,
+    "TotOpp": 18.0,
+    "TotOppGem": 22.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 26912190,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 66211,
+    "Straatnaam": "Cambridgelaan",
+    "Nummer": "819",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k3",
+    "Postcode": "3584 DW",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 26912190,
+    "TotOpp": 15.0,
+    "TotOppGem": 22.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 26912239,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 66084,
+    "Straatnaam": "Cambridgelaan",
+    "Nummer": "767",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k13",
+    "Postcode": "3584 DW",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 26912239,
+    "TotOpp": 17.0,
+    "TotOppGem": 23.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 20204006,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 63461,
+    "Straatnaam": "Ina Boudier-Bakkerlaan",
+    "Nummer": "57",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k1170",
+    "Postcode": "3582 VP",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 20204006,
+    "TotOpp": 12.0,
+    "TotOppGem": 31.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 36800190,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 113824,
+    "Straatnaam": "Opaalweg",
+    "Nummer": "254",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k4",
+    "Postcode": "3523 RP",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 36800190,
+    "TotOpp": 17.0,
+    "TotOppGem": 37.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 32802005,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 112137,
+    "Straatnaam": "Alexander Numankade",
+    "Nummer": "3",
+    "Letter": "E",
+    "Toevoeging": null,
+    "Locatie": "k1",
+    "Postcode": "3572 KN",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 32802005,
+    "TotOpp": 13.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 21001219,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 68615,
+    "Straatnaam": "Warande",
+    "Nummer": "73",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k304",
+    "Postcode": "3705 ZE",
+    "Plaats": "ZEIST",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 21001219,
+    "TotOpp": 15.0,
+    "TotOppGem": 31.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 29503007,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 62722,
+    "Straatnaam": "Schoolstraat",
+    "Nummer": "34",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k22",
+    "Postcode": "3581 PW",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 29503007,
+    "TotOpp": 16.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 26301001,
+  "Soort_Product": "ozelf",
+  "ADRES_H": [
+   {
+    "Oid": 61732,
+    "Straatnaam": "Wittevrouwensingel",
+    "Nummer": "74",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": "k01",
+    "Postcode": "3572 CD",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 26301001,
+    "TotOpp": 13.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 30100187,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 109156,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "187",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LE",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 30100187,
+    "TotOpp": 23.0,
+    "TotOppGem": 41.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 30100218,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 109188,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "218",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LG",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 30100218,
+    "TotOpp": 23.0,
+    "TotOppGem": 41.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 30100260,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 109230,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "260",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LH",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 30100260,
+    "TotOpp": 23.0,
+    "TotOppGem": 41.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 30100281,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 109251,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "281",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LJ",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 30100281,
+    "TotOpp": 23.0,
+    "TotOppGem": 41.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 36400112,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 67651,
+    "Straatnaam": "Bisschopssteeg",
+    "Nummer": "187",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3584 SE",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 36400112,
+    "TotOpp": 29.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 38900066,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 115075,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "356",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LK",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 38900066,
+    "TotOpp": 16.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 38900179,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 115140,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "417",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LK",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 38900179,
+    "TotOpp": 20.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 38900166,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 115131,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "410",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LK",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 38900166,
+    "TotOpp": 19.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 52000076,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 69644,
+    "Straatnaam": "Talent Square",
+    "Nummer": "76",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "5038 LX",
+    "Plaats": "TILBURG",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 52000076,
+    "TotOpp": 23.0,
+    "TotOppGem": 0.0
+   }
+  ]
+ },
+ {
+  "EenheidNummer": 30100023,
+  "Soort_Product": "zelf",
+  "ADRES_H": [
+   {
+    "Oid": 108992,
+    "Straatnaam": "Burgemeester Fockema Andreaeplein",
+    "Nummer": "23",
+    "Letter": null,
+    "Toevoeging": null,
+    "Locatie": null,
+    "Postcode": "3582 LA",
+    "Plaats": "UTRECHT",
+    "Aanduiding": null
+   }
+  ],
+  "ASP_TOTAAL_C": [
+   {
+    "EenheidNummer": 30100023,
+    "TotOpp": 23.0,
+    "TotOppGem": 41.0
+   }
+  ]
+ }
+]
