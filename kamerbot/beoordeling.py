@@ -27,14 +27,16 @@ log = logging.getLogger(__name__)
 MODEL = os.environ.get("KAMERBOT_MODEL", "claude-sonnet-5-5")
 
 STANDAARD_PROFIEL = (
-    "Nederlandstalige mannelijke student in Utrecht, lid van een studentenroeivereniging en een heerendispuut. "
-    "Zoekt een gezellig studentenhuis waar mensen samen eten en dingen doen."
+    "Nederlandstalige mannelijke student in Utrecht, lid van een studentenroeivereniging en een heerendispuut."
 )
 
 SYSTEEM = (
     "Je beoordeelt studentenkamers in Utrecht voor één kamerzoeker. Je krijgt zijn profiel en de tekst die het huis "
-    "bij de kamer heeft geschreven. Beoordeel of hij past bij wie het huis zoekt: geslacht, taal, studie of werk, "
-    "leeftijd, sfeer. Een huis dat alleen vrouwen, alleen internationals of alleen werkenden zoekt, past niet. "
+    "bij de kamer heeft geschreven. Zet past alleen op false bij een harde eis waar hij niet aan voldoet: "
+    "een ander geslacht, alleen internationals of Engelstaligen, een studie of opleiding die hij niet doet, "
+    "alleen werkenden (geen studenten), of een leeftijd waar hij buiten valt. "
+    "Sfeer, levensfase, rust of gezelligheid tellen niet mee, ook niet in het cijfer: het cijfer zegt alleen "
+    "hoe goed hij past bij wie ze zoeken (geslacht, taal, studie, leeftijd). "
     "Zegt de tekst niets over wie ze zoeken, dan past hij (cijfer rond 5). "
     "Staat er een tijd voor de hospiteeravond of kennismaking, geef dan begin en eind als HH:MM (24 uur); "
     "staat er alleen een begintijd, laat het eind leeg. Verzin geen tijden."
@@ -82,7 +84,8 @@ class Beoordelaar:
         return self.client is not None
 
     def _hash(self, k: Kamer) -> str:
-        return hashlib.sha256(f"{self.profiel}\n{k.verhaaltje}".encode()).hexdigest()[:16]
+        # Met de instructie erin: na een wijziging daarvan wordt elk verhaaltje opnieuw beoordeeld.
+        return hashlib.sha256(f"{SYSTEEM}\n{self.profiel}\n{k.verhaaltje}".encode()).hexdigest()[:16]
 
     def beoordeel(self, k: Kamer) -> Oordeel | None:
         """None als het niet lukt of als er geen verhaaltje is; de bot gaat dan door zonder oordeel."""
