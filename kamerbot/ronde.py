@@ -165,7 +165,9 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
 
     # Eerst uitzoeken op welke kamers je echt kunt reageren (SSH zegt ja), snelst verlopend eerst.
     vrij = cfg.max_actief - ssh.actieve_reacties()
-    kansloos = sorted(selectie.kansloos(gereageerd, cfg), key=lambda k: k.positie, reverse=True)
+    # Alleen reacties die de bot zelf plaatste; wat je zelf op de site doet, blijft staan (Hidde, 18 okt 2026).
+    kansloos = sorted((k for k in selectie.kansloos(gereageerd, cfg) if db.heeft("ssh", str(k.flow_id), "gereageerd")),
+                      key=lambda k: k.positie, reverse=True)
     mogelijk = []
     for k in selectie.kies(kandidaten, len(kandidaten), cfg):
         if len(mogelijk) >= max(vrij, 0) + len(kansloos):

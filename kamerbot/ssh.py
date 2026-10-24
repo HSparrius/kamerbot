@@ -27,6 +27,7 @@ class Kamer:
     deadline: datetime
     straat: str = ""
     huisnummer: str = ""
+    locatie: str = ""  # kamernummer binnen het huis, bijv. "k10"
     stad: str = ""
     m2: float | None = None
     # Onderstaande velden komen pas uit offer/{flow_id}.
@@ -45,7 +46,7 @@ class Kamer:
 
     @property
     def adres(self) -> str:
-        return f"{self.straat} {self.huisnummer}".strip()
+        return f"{self.straat} {self.huisnummer} {self.locatie}".strip()
 
 
 def _datum(s: str) -> datetime:
@@ -76,6 +77,7 @@ def kamers_uit_lijst(offers: list[dict], details: list[dict]) -> list[Kamer]:
             adres = (d.get("ADRES_H") or [{}])[0]
             k.straat = (adres.get("Straatnaam") or "").strip()
             k.huisnummer = f"{adres.get('Nummer') or ''}{adres.get('Letter') or ''}"
+            k.locatie = (adres.get("Locatie") or "").strip()
             k.stad = (adres.get("Plaats") or "").strip().upper()
             opp = d.get("ASP_TOTAAL_C") or []
             k.m2 = opp[0].get("TotOpp") if opp else None
