@@ -9,6 +9,7 @@ import logging
 import httpx
 
 from . import selectie
+from .afstand import Geo
 from .agenda import Agenda, AgendaFout, afspraak, afspraak_id
 from .beoordeling import Beoordelaar
 from .config import Config
@@ -27,9 +28,10 @@ class RondeMislukt(Exception):
 def regel(k: Kamer) -> str:
     pos = f"#{k.positie} van {k.aantal_reacties}" if k.positie else "positie ?"
     m2 = f"{k.m2:.0f} m²" if k.m2 else ""
+    fiets = f" · 🚲 {k.fietsminuten:.0f} min" if k.fietsminuten is not None else ""
     tekst = (
         f'<a href="{k.url}">{html.escape(k.adres)}</a> · €{k.brutto_huur:.0f} · {m2} · '
-        f"{k.soort} · {pos} · sluit {k.deadline:%a %d-%m %H:%M}"
+        f"{k.soort} · {pos}{fiets} · sluit {k.deadline:%a %d-%m %H:%M}"
     )
     if k.oordeel is not None:
         tekst += f"\n   🤖 {k.oordeel.cijfer}/10: {html.escape(k.oordeel.reden)}"
@@ -110,7 +112,7 @@ def vergeet_reactie(db: Opslag, k: Kamer) -> None:
 
 
 def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
-          beoordelaar: Beoordelaar | None = None, agenda: Agenda | None = None) -> str:
+          beoordelaar: Beoordelaar | None = None, agenda: Agenda | None = None, geo: Geo | None = None) -> str:
     """Geeft een korte samenvatting terug (voor /status en het log). Gooit RondeMislukt als hij niet kan draaien."""
     tg = tg or Telegram(cfg.telegram_token, cfg.telegram_chat_id)
     db = Opslag(cfg.data_dir / "kamerbot.db")
@@ -118,6 +120,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     beoordelaar = beoordelaar or Beoordelaar(cfg.anthropic_api_key, cfg.profiel, db)
     if agenda is None:
         agenda = maak_agenda(cfg, db, tg)
+    geo = geo or Geo(db.db)
 
     kandidaten, nieuw, gereageerd = [], [], []
     aanbod = ssh.aanbod()
@@ -144,7 +147,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             continue
         if selectie.basisfilter(k, cfg.filters):
             continue
-        reden = selectie.detailfilter(k, cfg.filters)
+        reden = selectie.fietsfilter(k, cfg.filters, geo) or selectie.detailfilter(k, cfg.filters)
         if not reden:
             k.oordeel = beoordelaar.beoordeel(k)
             reden = selectie.oordeelfilter(k)

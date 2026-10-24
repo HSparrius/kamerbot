@@ -350,3 +350,58 @@ def test_zelf_ingetrokken_reactie_van_de_bot_wordt_niet_opnieuw_geplaatst(tmp_pa
     ssh = FakeSSH([kamer(6)], actief=0)
     ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
     assert ssh.gereageerd == []
+
+
+# ------------------------------------------------------------------ fietstijd
+def pdok(punten):
+    """Nep-PDOK: postcode+huisnummer -> (lat, lon); telt de verzoeken."""
+    verzoeken = []
+
+    def antwoord(req):
+        q = req.url.params["q"]
+        verzoeken.append(q)
+        p = punten.get(q)
+        docs = [{"centroide_ll": f"POINT({p[1]} {p[0]})"}] if p else []
+        return httpx.Response(200, json={"response": {"docs": docs}})
+
+    return httpx.Client(transport=httpx.MockTransport(antwoord)), verzoeken
+
+
+def test_fietsfilter_houdt_kamers_ver_van_cs_tegen(tmp_path):
+    from kamerbot.afstand import Geo
+    http, verzoeken = pdok({"3581AB 100": (52.0937, 5.1325), "3584SC 141": (52.0845, 5.1730)})
+    geo = Geo(Opslag(tmp_path / "db").db, http)
+    f = Config().filters
+    f.max_fietsminuten = 10
+    dichtbij = kamer(1, postcode="3581 AB", huisnummer="100")
+    ver = kamer(2, postcode="3584 SC", huisnummer="141")
+    assert selectie.fietsfilter(dichtbij, f, geo) is None
+    assert 7 < dichtbij.fietsminuten < 10
+    assert "min fietsen" in selectie.fietsfilter(ver, f, geo)
+    selectie.fietsfilter(ver, f, geo)
+    assert verzoeken == ["3581AB 100", "3584SC 141"]  # tweede keer uit de opslag
+
+
+def test_fietsfilter_laat_onvindbaar_adres_door_en_valt_terug_op_postcode(tmp_path):
+    from kamerbot.afstand import Geo
+    http, verzoeken = pdok({"3581AB": (52.0937, 5.1325)})
+    geo = Geo(Opslag(tmp_path / "db").db, http)
+    f = Config().filters
+    f.max_fietsminuten = 10
+    assert selectie.fietsfilter(kamer(1, postcode="3581AB", huisnummer="2B"), f, geo) is None
+    assert verzoeken == ["3581AB 2B", "3581AB"]
+    onbekend = kamer(2, postcode="9999ZZ", huisnummer="1")
+    assert selectie.fietsfilter(onbekend, f, geo) is None and onbekend.fietsminuten is None
+
+
+def test_ronde_slaat_kamer_ver_van_cs_over(tmp_path):
+    from kamerbot.afstand import Geo
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    cfg.filters.max_fietsminuten = 10
+    http, _ = pdok({"3581AB 1": (52.0937, 5.1325), "3584SC 2": (52.0845, 5.1730)})
+    ssh, tg = FakeSSH([kamer(1, postcode="3581AB"), kamer(2, postcode="3584SC")], actief=0), FakeTG()
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda(),
+          geo=Geo(Opslag(tmp_path / "geo.db").db, http))
+    assert ssh.gereageerd == [1]
+    assert any("🚲 8 min" in b for b in tg.berichten)

@@ -8,11 +8,15 @@ later binnenkomen.
 """
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 
+from . import afstand
 from .config import Config, Filters
 from .ssh import Kamer
+
+log = logging.getLogger("kamerbot")
 
 
 def basisfilter(k: Kamer, f: Filters) -> str | None:
@@ -25,6 +29,21 @@ def basisfilter(k: Kamer, f: Filters) -> str | None:
     for s in f.uitgesloten_straten:
         if s.lower() in straat:
             return f"straat {k.straat}"
+    return None
+
+
+def fietsfilter(k: Kamer, f: Filters, geo) -> str | None:
+    """Te ver van Utrecht Centraal. Is het adres niet te vinden, dan gaat de kamer door (liever een
+    reactie te veel dan een goede kamer missen) en staat het in het log."""
+    if not f.max_fietsminuten:
+        return None
+    p = geo.punt(k.postcode, k.huisnummer)
+    if p is None:
+        log.warning("Fietstijd onbekend voor %s (%s)", k.adres, k.postcode or "geen postcode")
+        return None
+    k.fietsminuten = afstand.fietsminuten(p)
+    if k.fietsminuten > f.max_fietsminuten:
+        return f"{k.fietsminuten:.0f} min fietsen naar CS"
     return None
 
 
