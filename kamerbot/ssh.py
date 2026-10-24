@@ -29,6 +29,7 @@ class Kamer:
     huisnummer: str = ""
     locatie: str = ""  # kamernummer binnen het huis, bijv. "k10"
     stad: str = ""
+    postcode: str = ""
     m2: float | None = None
     # Onderstaande velden komen pas uit offer/{flow_id}.
     geslacht: str | None = None
@@ -37,6 +38,8 @@ class Kamer:
     aantal_reacties: int | None = None
     bezichtiging: str | None = None
     al_gereageerd: bool = False
+    # Geschatte fietstijd naar Utrecht Centraal (afstand.py), None = onbekend.
+    fietsminuten: float | None = None
     # Uitslag van beoordeling.py (Oordeel), als het taalmodel aan staat.
     oordeel: object | None = None
 
@@ -79,6 +82,7 @@ def kamers_uit_lijst(offers: list[dict], details: list[dict]) -> list[Kamer]:
             k.huisnummer = f"{adres.get('Nummer') or ''}{adres.get('Letter') or ''}"
             k.locatie = (adres.get("Locatie") or "").strip()
             k.stad = (adres.get("Plaats") or "").strip().upper()
+            k.postcode = (adres.get("Postcode") or "").strip()
             opp = d.get("ASP_TOTAAL_C") or []
             k.m2 = opp[0].get("TotOpp") if opp else None
         kamers.append(k)

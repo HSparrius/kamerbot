@@ -15,6 +15,8 @@ class Filters:
         "Heidelberglaan", "Uppsalalaan", "Budapestlaan", "Princetonlaan", "Princetonplein",
         "Sorbonnelaan", "Yalelaan", "Kyotolaan", "Harvardlaan", "Coimbrapad", "Oxfordlaan", "Bisschopssteeg",
     )
+    # Maximaal zoveel minuten fietsen naar Utrecht Centraal (Hidde, 24 okt 2026); 0 = uit. Zie afstand.py.
+    max_fietsminuten: float = float(os.environ.get("MAX_FIETSMINUTEN", "10"))
     # Wat SSH bij PreferenceGender kan zetten; alles behalve dit wordt overgeslagen.
     toegestane_geslachten: tuple[str | None, ...] = (None, "none", "male")
     # Woorden in het verhaaltje waardoor een kamer afvalt (kleine letters).

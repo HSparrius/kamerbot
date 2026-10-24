@@ -11,6 +11,8 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Reageren op de dag van de deadline:** SSH rangschikt op inschrijfduur, dus vroeg reageren
   levert geen betere plek op. De bot reageert pas in de laatste 18 uur (`REAGEER_VENSTER_UUR`),
   en kamers die het eerst verlopen gaan voor.
+- **Fietstijd:** alleen kamers binnen 10 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
+  geschat uit de hemelsbrede afstand via PDOK. Onvindbaar adres = gaat gewoon door.
 - **Kansgrens:** boven plek 30 (`SSH_MAX_POSITIE`) reageert hij niet. Zak je na reageren
   alsnog onder die grens, dan trekt hij je reactie in en gebruikt hij de plek meteen voor een
   andere kamer (met `AUTO_REAGEREN=0` krijg je alleen een melding).
