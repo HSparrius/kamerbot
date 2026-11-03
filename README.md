@@ -8,9 +8,9 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Filters** (`kamerbot/config.py`): maximaal €1000 brutto, alleen Utrecht, niet aan de
   Ina Boudier-Bakkerlaan of de Pythagoraslaan, geen huizen die alleen vrouwen zoeken, en
   uitsluitwoorden in het verhaaltje.
-- **Reageren op de dag van de deadline:** SSH rangschikt op inschrijfduur, dus vroeg reageren
-  levert geen betere plek op. De bot reageert pas in de laatste 18 uur (`REAGEER_VENSTER_UUR`),
-  en kamers die het eerst verlopen gaan voor.
+- **Reageren op elk passend aanbod:** SSH rangschikt op inschrijfduur, dus intrekken en later
+  opnieuw reageren kost niets. De bot reageert meteen; wil je pas in de laatste X uur reageren,
+  zet dan `REAGEER_VENSTER_UUR` (onder 24 doet de 24-uursvoorrang niets).
 - **Fietstijd:** alleen kamers binnen 10 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
   geschat uit de hemelsbrede afstand via PDOK. Onvindbaar adres = gaat gewoon door.
 - **Voorrang:** kamers die binnen 24 uur sluiten gaan voor, daarna de laagste plek op de wachtlijst.

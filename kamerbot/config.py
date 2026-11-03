@@ -39,10 +39,10 @@ class Config:
     data_dir: Path = field(default_factory=lambda: Path(os.environ.get("KAMERBOT_DATA", "data")))
     # Volgens Hidde maximaal 7 reacties tegelijk; de bot vraagt het actuele aantal op bij SSH.
     max_actief: int = int(os.environ.get("SSH_MAX_ACTIEF", "7"))
-    # Pas reageren als de deadline binnen dit aantal uur valt (zie selectie.py).
-    # Met rondes tussen 9:00 en 18:00 en tussen 22:00 en 00:00 betekent 18 uur:
-    # reageren op de dag van de deadline.
-    reageer_venster_uur: float = float(os.environ.get("REAGEER_VENSTER_UUR", "18"))
+    # Pas reageren als de deadline binnen dit aantal uur valt (zie selectie.py); 0 = op alles meteen.
+    # Standaard 0 (Hidde, 3 nov 2026): de bot reageert op elk passend aanbod en ruilt pas als de
+    # plekken op zijn. Met een venster onder 24 uur doet de 24-uursvoorrang niets.
+    reageer_venster_uur: float = float(os.environ.get("REAGEER_VENSTER_UUR", "0"))
     # Niet reageren boven deze plek op de wachtlijst; 0 = geen grens (Hidde, 3 nov 2026: bij te veel
     # kamers valt de slechtste plek af, zie selectie.verdeel).
     max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "0"))
