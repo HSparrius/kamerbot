@@ -53,7 +53,7 @@ def test_alleen_commandos_van_eigen_chat(tmp_path, monkeypatch):
     d.verwerk({"chat": {"id": 42}, "text": "/update"})
     assert (tmp_path / "update.request").exists()
     d.verwerk({"chat": {"id": 42}, "text": "/status"})
-    assert "Volgende ronde:" in verstuurd[-1] and "Kansgrens: plek 30" in verstuurd[-1]
+    assert "Volgende ronde:" in verstuurd[-1] and "Voorrang: sluit binnen 24 uur" in verstuurd[-1]
 
 
 def test_meldingen_van_updatescript_worden_doorgestuurd(tmp_path, monkeypatch):

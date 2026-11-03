@@ -199,7 +199,6 @@ def test_ronde_zonder_auto_trekt_niet_in(tmp_path):
     ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=35), kamer(2)], actief=7)
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=FakeAgenda())
     assert ssh.ingetrokken == []
-    assert any("Overweeg" in b for b in tg.berichten)
 
 
 def test_kansloze_reactie_blijft_staan_zolang_er_plek_is(tmp_path):
@@ -405,3 +404,81 @@ def test_ronde_slaat_kamer_ver_van_cs_over(tmp_path):
           geo=Geo(Opslag(tmp_path / "geo.db").db, http))
     assert ssh.gereageerd == [1]
     assert any("🚲 8 min" in b for b in tg.berichten)
+
+
+# ------------------------------------------------------------------ timeouts
+def test_ssh_probeert_get_opnieuw_na_timeout(tmp_path, monkeypatch):
+    from kamerbot import ssh as sshmod
+    monkeypatch.setattr(sshmod, "WACHT_S", (0, 0))
+    pogingen = []
+
+    def antwoord(req):
+        pogingen.append(req.url.path)
+        if len(pogingen) < 3:
+            raise httpx.ReadTimeout("traag", request=req)
+        return httpx.Response(200, json={"NumberOfActiveApplications": 4})
+
+    c = sshmod.SSHClient(tmp_path / "geen-cookies.json")
+    c.http = httpx.Client(base_url=sshmod.BASE, transport=httpx.MockTransport(antwoord))
+    assert c.actieve_reacties() == 4 and len(pogingen) == 3
+
+    pogingen.clear()
+    c.http = httpx.Client(base_url=sshmod.BASE, transport=httpx.MockTransport(
+        lambda req: (_ for _ in ()).throw(httpx.ReadTimeout("traag", request=req))))
+    try:
+        c.actieve_reacties()
+    except httpx.ReadTimeout as e:
+        from kamerbot.dienst import oorzaak
+        assert oorzaak(e) == "SSH reageert niet (ReadTimeout bij /api/v1/reactions/active-count)"
+    else:
+        raise AssertionError("na drie timeouts moet de fout doorkomen")
+
+
+def test_telegram_timeout_laat_de_ronde_niet_vallen(monkeypatch):
+    from kamerbot.telegram import Telegram
+
+    def traag(*a, **kw):
+        raise httpx.ReadTimeout("traag")
+
+    monkeypatch.setattr(httpx, "post", traag)
+    assert Telegram("t", "1").stuur("hoi") is False
+
+
+def test_timeout_bij_reageren_houdt_de_rest_niet_tegen(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+
+    class Traag(FakeSSH):
+        def reageer(self, k):
+            if k.flow_id == 2:
+                raise httpx.ReadTimeout("traag")
+            super().reageer(k)
+
+    ssh, tg = Traag([kamer(2), kamer(3)], actief=3), FakeTG()
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [3]
+    assert any("ReadTimeout" in b for b in tg.berichten)
+
+
+def test_ssh_500_wordt_opnieuw_geprobeerd_en_een_kamer_overgeslagen(tmp_path, monkeypatch):
+    from kamerbot import ssh as sshmod
+    monkeypatch.setattr(sshmod, "WACHT_S", (0, 0))
+    codes = iter([500, 200])
+    c = sshmod.SSHClient(tmp_path / "geen-cookies.json")
+    c.http = httpx.Client(base_url=sshmod.BASE, transport=httpx.MockTransport(
+        lambda req: httpx.Response(next(codes), json={"NumberOfActiveApplications": 2})))
+    assert c.actieve_reacties() == 2
+
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+
+    class Kapot(FakeSSH):
+        def details(self, k):
+            if k.flow_id == 2:
+                raise httpx.HTTPStatusError("500", request=httpx.Request("GET", "https://www.sshxl.nl/x"),
+                                            response=httpx.Response(500))
+            return k
+
+    ssh = Kapot([kamer(2), kamer(3)], actief=3)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [3]

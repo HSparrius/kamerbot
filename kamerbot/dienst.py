@@ -13,11 +13,15 @@ start deploy/update.sh, en dat script laat een melding achter in data/notices/.
 """
 from __future__ import annotations
 
+import html
 import logging
 import random
 from datetime import date, datetime, timedelta
 from datetime import time as tijd
 
+import httpx
+
+from . import selectie
 from .config import Config
 from .opslag import Opslag
 from .ronde import RondeMislukt, ronde
@@ -25,6 +29,23 @@ from .ssh import NL, NietIngelogd
 from .telegram import Telegram
 
 log = logging.getLogger(__name__)
+
+DIENSTEN = {"www.sshxl.nl": "SSH", "api.pdok.nl": "PDOK (adressen)", "api.telegram.org": "Telegram",
+            "oauth2.googleapis.com": "Google Agenda", "www.googleapis.com": "Google Agenda"}
+
+
+def oorzaak(e: Exception) -> str:
+    """Welke stap faalde, in gewone woorden: "SSH reageert niet (ReadTimeout bij /api/v1/offer)"."""
+    if isinstance(e, httpx.HTTPError):
+        try:
+            url = e.request.url
+        except RuntimeError:  # fout zonder verzoek erbij
+            return type(e).__name__
+        wie = DIENSTEN.get(url.host, url.host)
+        if isinstance(e, httpx.HTTPStatusError):
+            return f"{wie} gaf HTTP {e.response.status_code} bij {url.path}"
+        return f"{wie} reageert niet ({type(e).__name__} bij {url.path})"
+    return f"{type(e).__name__}: {str(e)[:150]}"
 
 VENSTERS = {
     "overdag": (tijd(9, 0), tijd(18, 0)),
@@ -146,8 +167,9 @@ class Dienst:
             self.laatste = "sessie verlopen, volgende ronde logt opnieuw in"
         except Exception as e:  # de dienst moet blijven draaien, wat er ook misgaat
             log.exception("%s mislukt", naam)
-            self.laatste = f"mislukt: {type(e).__name__}"
-            self.tg.stuur(f"❌ Kamerbot: {naam} mislukt ({type(e).__name__}). Kijk op de VPS: journalctl -u kamerbot -n 50")
+            self.laatste = f"mislukt: {oorzaak(e)}"
+            self.tg.stuur(f"❌ Kamerbot: {naam} mislukt: {html.escape(oorzaak(e))}. "
+                          "Kijk op de VPS: journalctl -u kamerbot -n 50")
         log.info("Klaar: %s", self.laatste)
         return gelukt
 
@@ -172,7 +194,8 @@ class Dienst:
                 f"Laatste ronde: {self.laatste}\n"
                 f"Volgende ronde: {f'{volgende:%a %d-%m %H:%M}' if volgende else 'onbekend'}\n"
                 f"Automatisch reageren: {auto}\n"
-                f"Kansgrens: plek {self.cfg.max_positie}"
+                f"Voorrang: sluit binnen {selectie.VOORRANG_UUR} uur, dan laagste plek"
+                + (f"\nPlekgrens: {self.cfg.max_positie}" if self.cfg.max_positie else "")
             )
         elif cmd in ("/start", "/help"):
             self.tg.stuur("\n".join(f"/{c} – {o.lower()}" for c, o in COMMANDOS.items()))

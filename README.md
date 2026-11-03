@@ -13,9 +13,10 @@ automatisch op de beste kamers, met meldingen via Telegram.
   en kamers die het eerst verlopen gaan voor.
 - **Fietstijd:** alleen kamers binnen 10 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
   geschat uit de hemelsbrede afstand via PDOK. Onvindbaar adres = gaat gewoon door.
-- **Kansgrens:** boven plek 30 (`SSH_MAX_POSITIE`) reageert hij niet. Zak je na reageren
-  alsnog onder die grens, dan trekt hij je reactie in en gebruikt hij de plek meteen voor een
-  andere kamer (met `AUTO_REAGEREN=0` krijg je alleen een melding).
+- **Voorrang:** kamers die binnen 24 uur sluiten gaan voor, daarna de laagste plek op de wachtlijst.
+  Zijn er meer kamers dan plekken (max 7), dan valt de kamer met de slechtste plek af; is dat een
+  bestaande reactie van de bot, dan trekt hij die in. Reacties die je zelf plaatst blijven staan.
+  Geen plekgrens meer, tenzij je `SSH_MAX_POSITIE` zet.
 - **Taalmodel** (optioneel, `ANTHROPIC_API_KEY`): Claude leest het verhaaltje, zegt of je past bij
   wie ze zoeken (cijfer 0–10 met een reden in de melding) en haalt de hospiteertijd eruit.
   Past het niet, dan slaat hij de kamer over. Elke tekst wordt maar één keer gelezen.

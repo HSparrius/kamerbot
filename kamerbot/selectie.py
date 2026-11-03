@@ -121,6 +121,15 @@ def score(k: Kamer) -> float:
     return round(s, 1)
 
 
+# Kamers die binnen zoveel uur sluiten gaan voor (Hidde, 3 nov 2026).
+VOORRANG_UUR = 24
+
+
+def rang(k: Kamer, nu: datetime) -> tuple:
+    """Lager is beter: eerst wat binnen 24 uur sluit, dan je plek op de wachtlijst (laagste nummer)."""
+    return (k.deadline - nu > timedelta(hours=VOORRANG_UUR), k.positie or 10_000, k.deadline)
+
+
 def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime | None = None) -> list[Kamer]:
     nu = nu or datetime.now(timezone.utc)
     venster = timedelta(hours=cfg.reageer_venster_uur)
@@ -129,13 +138,20 @@ def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime 
         for k in kandidaten
         if k.deadline - nu <= venster
         and k.deadline > nu
-        and (k.positie is None or k.positie <= cfg.max_positie)
+        # Geen positiegrens meer, tenzij SSH_MAX_POSITIE gezet is.
+        and (not cfg.max_positie or k.positie is None or k.positie <= cfg.max_positie)
     ]
-    # Eerst wat het snelst verloopt, binnen dezelfde deadline de hoogste score.
-    rijp.sort(key=lambda k: (k.deadline, -score(k)))
+    rijp.sort(key=lambda k: (rang(k, nu), -score(k)))
     return rijp[: max(vrije_plekken, 0)]
 
 
-def kansloos(gereageerd: list[Kamer], cfg: Config) -> list[Kamer]:
-    """Kamers waar je al op reageerde maar inmiddels buiten de kansgrens bent gezakt."""
-    return [k for k in gereageerd if k.positie and k.positie > cfg.max_positie]
+def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int,
+            nu: datetime | None = None) -> tuple[list[Kamer], list[Kamer]]:
+    """Welke reacties van de bot intrekken en op welke nieuwe kamers reageren, met `plekken` plekken
+    voor de bot (vrije plekken + zijn eigen reacties). De beste `plekken` kamers volgens rang() blijven;
+    bij gelijke rang wint een bestaande reactie. Zo wordt er alleen ingetrokken als er te veel zijn."""
+    nu = nu or datetime.now(timezone.utc)
+    alles = sorted([(rang(k, nu), 0, i, k) for i, k in enumerate(eigen)]
+                   + [(rang(k, nu), 1, i, k) for i, k in enumerate(nieuw)], key=lambda t: t[:3])
+    blijft = {id(t[3]) for t in alles[: max(plekken, 0)]}
+    return [k for k in eigen if id(k) not in blijft], [k for k in nieuw if id(k) in blijft]
