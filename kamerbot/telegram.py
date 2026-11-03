@@ -18,11 +18,16 @@ class Telegram:
         if not (self.token and self.chat_id):
             log.info("Telegram niet ingesteld, bericht:\n%s", tekst)
             return False
-        r = httpx.post(
-            f"https://api.telegram.org/bot{self.token}/sendMessage",
-            json={"chat_id": self.chat_id, "text": tekst, "parse_mode": "HTML", "disable_web_page_preview": True},
-            timeout=20,
-        )
+        try:
+            r = httpx.post(
+                f"https://api.telegram.org/bot{self.token}/sendMessage",
+                json={"chat_id": self.chat_id, "text": tekst, "parse_mode": "HTML", "disable_web_page_preview": True},
+                timeout=20,
+            )
+        except httpx.HTTPError as e:
+            # Een melding die niet aankomt, mag de ronde niet laten vallen.
+            log.error("Telegram niet bereikbaar: %s", type(e).__name__)
+            return False
         if r.status_code != 200:
             log.error("Telegram fout %s: %s", r.status_code, r.text[:200])
             return False

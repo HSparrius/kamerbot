@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +13,9 @@ import httpx
 
 BASE = "https://www.sshxl.nl"
 NL = ZoneInfo("Europe/Amsterdam")
+WACHT_S = (5, 15)  # pauze voor de 2e en 3e poging
+
+log = logging.getLogger("kamerbot")
 
 
 class NietIngelogd(Exception):
@@ -107,7 +112,7 @@ class SSHClient:
         self.cookie_file = cookie_file
         self.http = httpx.Client(
             base_url=BASE,
-            timeout=30,
+            timeout=httpx.Timeout(45, connect=10),
             headers={
                 "accept": "application/json, */*",
                 "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -128,7 +133,17 @@ class SSHClient:
             self.http.headers["x-xsrf-token"] = xsrf
 
     def _get(self, pad: str, **params) -> object:
-        r = self.http.get(pad, params=params or None)
+        # SSH is soms traag of hapert even (ReadTimeout, 3 nov 2026). Een GET verandert niets, dus
+        # gewoon nog eens proberen; pas na drie keer geeft de ronde het op.
+        for poging in range(3):
+            try:
+                r = self.http.get(pad, params=params or None)
+                break
+            except httpx.TransportError as e:
+                if poging == 2:
+                    raise
+                log.warning("SSH %s: %s, nieuwe poging", pad, type(e).__name__)
+                time.sleep(WACHT_S[poging])
         if r.status_code in (401, 403):
             raise NietIngelogd(pad)
         r.raise_for_status()

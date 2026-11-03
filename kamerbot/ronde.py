@@ -104,6 +104,13 @@ def agenda_weg(agenda: Agenda | None, db: Opslag, tg: Telegram, k: Kamer) -> Non
     db.db.commit()
 
 
+def httpfout(e: httpx.HTTPError) -> str:
+    """"HTTP 409" of "ReadTimeout": kort genoeg voor een Telegram-regel."""
+    if isinstance(e, httpx.HTTPStatusError):
+        return f"HTTP {e.response.status_code}"
+    return type(e).__name__
+
+
 def vergeet_reactie(db: Opslag, k: Kamer) -> None:
     """Na intrekken door de bot: niet meer als gereageerd onthouden, anders slaat hij de kamer voorgoed over,
     ook als hij later wél weer past (bijv. na een filterfout, zoals Otterstraat 2B k10 op 18 okt 2026).
@@ -136,8 +143,8 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             if fout and cfg.auto_reageren and db.heeft("ssh", str(k.flow_id), "gereageerd"):
                 try:
                     ssh.trek_in(k)
-                except httpx.HTTPStatusError as e:
-                    log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
+                except httpx.HTTPError as e:
+                    log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
                 else:
                     vergeet_reactie(db, k)
                     agenda_weg(agenda, db, tg, k)
@@ -190,8 +197,8 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         if cfg.auto_reageren:
             try:
                 ssh.trek_in(k)
-            except httpx.HTTPStatusError as e:
-                log.warning("Intrekken %s mislukt: HTTP %s", k.adres, e.response.status_code)
+            except httpx.HTTPError as e:
+                log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
                 continue
             vergeet_reactie(db, k)
             ingetrokken += 1
@@ -219,11 +226,12 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             continue
         try:
             ssh.reageer(k)
-        except httpx.HTTPStatusError as e:
-            # Eén kamer die net dichtging of weigert, mag de rest van de ronde niet tegenhouden.
-            log.warning("Reageren op %s mislukt: HTTP %s", k.adres, e.response.status_code)
+        except httpx.HTTPError as e:
+            # Eén kamer die net dichtging, weigert of niet antwoordt, mag de rest van de ronde niet tegenhouden.
+            # Bij een timeout kan de reactie toch zijn aangekomen; dat ziet de volgende ronde.
+            log.warning("Reageren op %s mislukt: %s", k.adres, httpfout(e))
             if not db.heeft("ssh", str(k.flow_id), "reageerfout"):
-                tg.stuur(f"⚠️ Reageren lukte niet (HTTP {e.response.status_code}):\n{regel(k)}")
+                tg.stuur(f"⚠️ Reageren lukte niet ({httpfout(e)}):\n{regel(k)}")
                 db.zet("ssh", str(k.flow_id), "reageerfout")
             continue
         db.zet("ssh", str(k.flow_id), "gereageerd")
