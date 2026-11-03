@@ -199,7 +199,6 @@ def test_ronde_zonder_auto_trekt_niet_in(tmp_path):
     ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=35), kamer(2)], actief=7)
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=FakeAgenda())
     assert ssh.ingetrokken == []
-    assert any("Overweeg" in b for b in tg.berichten)
 
 
 def test_kansloze_reactie_blijft_staan_zolang_er_plek_is(tmp_path):
@@ -459,3 +458,27 @@ def test_timeout_bij_reageren_houdt_de_rest_niet_tegen(tmp_path):
     ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
     assert ssh.gereageerd == [3]
     assert any("ReadTimeout" in b for b in tg.berichten)
+
+
+def test_ssh_500_wordt_opnieuw_geprobeerd_en_een_kamer_overgeslagen(tmp_path, monkeypatch):
+    from kamerbot import ssh as sshmod
+    monkeypatch.setattr(sshmod, "WACHT_S", (0, 0))
+    codes = iter([500, 200])
+    c = sshmod.SSHClient(tmp_path / "geen-cookies.json")
+    c.http = httpx.Client(base_url=sshmod.BASE, transport=httpx.MockTransport(
+        lambda req: httpx.Response(next(codes), json={"NumberOfActiveApplications": 2})))
+    assert c.actieve_reacties() == 2
+
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+
+    class Kapot(FakeSSH):
+        def details(self, k):
+            if k.flow_id == 2:
+                raise httpx.HTTPStatusError("500", request=httpx.Request("GET", "https://www.sshxl.nl/x"),
+                                            response=httpx.Response(500))
+            return k
+
+    ssh = Kapot([kamer(2), kamer(3)], actief=3)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [3]

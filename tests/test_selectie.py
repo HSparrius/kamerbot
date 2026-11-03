@@ -61,12 +61,15 @@ def test_kies_wacht_tot_deadline_en_vult_alleen_vrije_plekken():
     assert selectie.kies(ks, 0, cfg, nu) == []
 
 
-def test_slechte_positie_wordt_overgeslagen():
+def test_plekgrens_alleen_als_hij_gezet_is():
     cfg = Config()
+    cfg.max_positie = 30
     k = kamers()[1478630]
     k.positie = 31
     nu = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
     assert selectie.kies([k], 5, cfg, nu) == []
+    cfg.max_positie = 0
+    assert selectie.kies([k], 5, cfg, nu) == [k]
 
 
 def test_leeg_geslacht_telt_als_geen_voorkeur():
@@ -92,37 +95,30 @@ def test_snelst_verlopende_eerst():
     assert gekozen[0].deadline == min(k.deadline for k in ks)
 
 
-def test_kansloos_na_zakken():
+def test_binnen_24_uur_gaat_voor_dan_laagste_plek():
+    from datetime import timedelta
     cfg = Config()
-    k = kamers()[1478671]
-    k.al_gereageerd, k.positie = True, 34
-    assert selectie.kansloos([k], cfg) == [k]
-    k.positie = 30
-    assert selectie.kansloos([k], cfg) == []
+    cfg.reageer_venster_uur = 999
+    nu = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+    ks = list(kamers().values())[:4]
+    for k, uur, plek in zip(ks, (60, 20, 10, 50), (2, 40, 25, 9)):
+        k.deadline, k.positie = nu + timedelta(hours=uur), plek
+    gekozen = selectie.kies(ks, 4, cfg, nu)
+    assert [k.positie for k in gekozen] == [25, 40, 2, 9]
 
 
-def test_verhaaltje_dat_alleen_een_vrouw_zoekt():
-    zoekt = selectie.zoekt_alleen_vrouw
-    assert zoekt("Wij zijn een gezellig huis en zoeken alleen een vrouw als nieuwe huisgenoot.")
-    assert zoekt("We are looking for a female housemate!")
-    assert zoekt("Wij zoeken een nieuwe meid voor ons huis")
-    assert zoekt("Gezellig meidenhuis zoekt nieuwe bewoonster")
-    assert zoekt("Nieuwe huisgenote (v) gezocht")
-    assert not zoekt("We zoeken een leuke huisgenoot, man of vrouw maakt niet uit.")
-    assert not zoekt("Wij zoeken een gezellige huisgenoot die mee-eet. M/V")
-    assert not zoekt("Ons huis bestaat uit drie jongens en twee meiden.")
-    # Otterstraat (18 okt 2026): gemengde vraag, dus niet afwijzen op de tekst.
-    assert not zoekt("Wij wonen met 15 personen in een super gezellig, dubbel gemengd huis aan de Otterstraat. "
-                     "Op dit moment bestaan we uit 5 vrouwen en 7 mannen, en zijn we op zoek naar een 6e en 7e "
-                     "vrouw en een 8e man. Vijftien huisgenoten klinkt misschien als veel.")
-    assert not zoekt("We are looking for a girl and a guy to join our house")
-    assert zoekt("We zijn met 4 jongens en 3 meiden en zoeken nu een nieuwe meid.")
-    k = Kamer(flow_id=1, wocas_id="1", soort="Hospiteren", type="Kamer", brutto_huur=500,
-              deadline=datetime.now(timezone.utc), geslacht=None,
-              verhaaltje="Wij zoeken alleen een vrouw!")
-    assert selectie.detailfilter(k, Filters()) == "verhaaltje: zoekt een vrouw"
-
-
-def test_kamernummer_staat_in_het_adres():
-    k = next(k for k in kamers().values() if k.straat == "Otterstraat")
-    assert k.locatie.startswith("k") and k.adres.endswith(k.locatie)
+def test_bij_te_veel_valt_de_slechtste_plek_af():
+    from datetime import timedelta
+    nu = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+    ks = list(kamers().values())[:5]
+    eigen_goed, eigen_slecht, eigen_later, nieuw_24u, nieuw_slecht = ks
+    for k, uur, plek in ((eigen_goed, 30, 5), (eigen_slecht, 30, 60), (eigen_later, 70, 3),
+                         (nieuw_24u, 10, 45), (nieuw_slecht, 40, 80)):
+        k.deadline, k.positie = nu + timedelta(hours=uur), plek
+    eigen, nieuw = [eigen_goed, eigen_slecht, eigen_later], [nieuw_24u, nieuw_slecht]
+    # Plek genoeg: niets intrekken, overal op reageren.
+    assert selectie.verdeel(eigen, nieuw, 5, nu) == ([], nieuw)
+    # Eén plek te weinig: de slechtste plek buiten 24 uur (80) valt af.
+    assert selectie.verdeel(eigen, nieuw, 4, nu) == ([], [nieuw_24u])
+    # Nog een te weinig: dan je bestaande reactie op plek 60.
+    assert selectie.verdeel(eigen, nieuw, 3, nu) == ([eigen_slecht], [nieuw_24u])

@@ -135,15 +135,19 @@ class SSHClient:
     def _get(self, pad: str, **params) -> object:
         # SSH is soms traag of hapert even (ReadTimeout, 3 nov 2026). Een GET verandert niets, dus
         # gewoon nog eens proberen; pas na drie keer geeft de ronde het op.
+        # Een 500 van SSH (3 nov 2026, offer/1478441) is meestal ook tijdelijk.
         for poging in range(3):
             try:
                 r = self.http.get(pad, params=params or None)
-                break
+                if r.status_code < 500 or poging == 2:
+                    break
+                fout = f"HTTP {r.status_code}"
             except httpx.TransportError as e:
                 if poging == 2:
                     raise
-                log.warning("SSH %s: %s, nieuwe poging", pad, type(e).__name__)
-                time.sleep(WACHT_S[poging])
+                fout = type(e).__name__
+            log.warning("SSH %s: %s, nieuwe poging", pad, fout)
+            time.sleep(WACHT_S[poging])
         if r.status_code in (401, 403):
             raise NietIngelogd(pad)
         r.raise_for_status()

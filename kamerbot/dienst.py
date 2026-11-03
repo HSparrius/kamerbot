@@ -21,6 +21,7 @@ from datetime import time as tijd
 
 import httpx
 
+from . import selectie
 from .config import Config
 from .opslag import Opslag
 from .ronde import RondeMislukt, ronde
@@ -193,7 +194,8 @@ class Dienst:
                 f"Laatste ronde: {self.laatste}\n"
                 f"Volgende ronde: {f'{volgende:%a %d-%m %H:%M}' if volgende else 'onbekend'}\n"
                 f"Automatisch reageren: {auto}\n"
-                f"Kansgrens: plek {self.cfg.max_positie}"
+                f"Voorrang: sluit binnen {selectie.VOORRANG_UUR} uur, dan laagste plek"
+                + (f"\nPlekgrens: {self.cfg.max_positie}" if self.cfg.max_positie else "")
             )
         elif cmd in ("/start", "/help"):
             self.tg.stuur("\n".join(f"/{c} – {o.lower()}" for c, o in COMMANDOS.items()))

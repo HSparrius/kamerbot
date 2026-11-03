@@ -43,8 +43,9 @@ class Config:
     # Met rondes tussen 9:00 en 18:00 en tussen 22:00 en 00:00 betekent 18 uur:
     # reageren op de dag van de deadline.
     reageer_venster_uur: float = float(os.environ.get("REAGEER_VENSTER_UUR", "18"))
-    # Je maakt kans tot en met deze positie (volgens Hidde de eerste 30).
-    max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "30"))
+    # Niet reageren boven deze plek op de wachtlijst; 0 = geen grens (Hidde, 3 nov 2026: bij te veel
+    # kamers valt de slechtste plek af, zie selectie.verdeel).
+    max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "0"))
     # Op False: alleen melden via Telegram, niets versturen.
     auto_reageren: bool = os.environ.get("AUTO_REAGEREN", "0") == "1"
     # Taalmodel dat het verhaaltje leest (beoordeling.py); leeg = uit.
