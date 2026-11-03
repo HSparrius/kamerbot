@@ -136,7 +136,7 @@ def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime 
     rijp = [
         k
         for k in kandidaten
-        if k.deadline - nu <= venster
+        if (not cfg.reageer_venster_uur or k.deadline - nu <= venster)
         and k.deadline > nu
         # Geen positiegrens meer, tenzij SSH_MAX_POSITIE gezet is.
         and (not cfg.max_positie or k.positie is None or k.positie <= cfg.max_positie)
