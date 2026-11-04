@@ -69,19 +69,19 @@ def overzicht(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = N
     tg = tg or Telegram(cfg.telegram_token, cfg.telegram_chat_id)
     db = Opslag(cfg.data_dir / "kamerbot.db")
     ssh = ssh or inloggen(cfg, db, tg)
-    reacties = []
+    actief = ssh.actieve_reacties()
+    reacties, mislukt = [], 0
     for k in ssh.aanbod():
         try:
             ssh.details(k)
         except httpx.HTTPError as e:
             log.warning("Details %s overgeslagen: %s", k.adres, httpfout(e))
+            mislukt += 1
             continue
         if k.al_gereageerd:
             reacties.append(k)
-    if not reacties:
-        return "📋 Je hebt nu geen reacties open bij SSH."
     reacties.sort(key=lambda k: k.deadline)
-    regels = []
+    regels = [f"📋 Je SSH-reacties: {actief} van {cfg.max_actief} plekken bezet, eerst wat het eerst sluit:"]
     for i, k in enumerate(reacties, 1):
         pos = f"#{k.positie} van {k.aantal_reacties}" if k.positie else "positie ?"
         zelf = "" if db.heeft("ssh", str(k.flow_id), "gereageerd") else " · zelf geplaatst"
@@ -89,7 +89,15 @@ def overzicht(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = N
             f'{i}. <b>{pos}</b> · <a href="{k.url}">{html.escape(k.adres)}</a> · €{k.brutto_huur:.0f} · '
             f"{k.soort} · sluit {k.deadline:%a %d-%m %H:%M}{zelf}"
         )
-    return f"📋 Je SSH-reacties ({len(reacties)} van {cfg.max_actief}), eerst wat het eerst sluit:\n" + "\n".join(regels)
+    if not reacties:
+        regels.append("Geen reacties op kamers in het huidige aanbod.")
+    # SSH telt een reactie op een gesloten kamer nog even mee, terwijl de kamer al uit het aanbod is.
+    if actief > len(reacties):
+        regels.append(f"+ {actief - len(reacties)} reactie(s) op kamers die niet meer in het aanbod staan "
+                      "(deadline waarschijnlijk voorbij).")
+    if mislukt:
+        regels.append(f"⚠️ {mislukt} kamer(s) konden niet worden opgehaald, dus de lijst kan onvolledig zijn.")
+    return "\n".join(regels)
 
 
 def maak_agenda(cfg: Config, db: Opslag, tg: Telegram) -> Agenda | None:
