@@ -14,7 +14,7 @@ from kamerbot.config import Config
 from kamerbot.dienst import Planning
 from kamerbot.opslag import Opslag
 from kamerbot.ronde import overzicht, ronde
-from kamerbot.ssh import NL, Kamer
+from kamerbot.ssh import NL, Kamer, Reactie, reacties_uit
 
 
 # Eén vaste deadline voor alle testkamers, zoals bij SSH (alles sluit om 23:59).
@@ -118,9 +118,15 @@ def test_agenda_maakt_aan_als_hij_er_niet_is():
 
 # ------------------------------------------------------------------ ronde
 class FakeSSH:
-    def __init__(self, kamers, actief):
-        self.kamers, self.actief = kamers, actief
+    def __init__(self, kamers, actief, reacties=()):
+        self.kamers, self.actief, self._reacties = kamers, actief, list(reacties)
         self.ingetrokken, self.gereageerd = [], []
+
+    def reacties(self):
+        return self._reacties
+
+    def kamer(self, flow_id):
+        raise httpx.ConnectError("weg")
 
     def aanbod(self):
         return self.kamers
@@ -151,14 +157,20 @@ class FakeTG:
 
 
 class FakeAgenda:
-    def __init__(self):
+    def __init__(self, bestaand=None):
         self.gezet, self.weg = [], []
+        self.bestaand = dict(bestaand or {})
 
     def zet(self, i, body):
         self.gezet.append(i)
+        self.bestaand[i] = body
+
+    def lees(self, i):
+        return self.bestaand.get(i)
 
     def verwijder(self, i):
         self.weg.append(i)
+        self.bestaand.pop(i, None)
 
 
 def test_ronde_trekt_kansloze_reactie_in_en_gebruikt_de_plek(tmp_path):
@@ -181,8 +193,7 @@ def test_ronde_trekt_kansloze_reactie_in_en_gebruikt_de_plek(tmp_path):
     s = ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=ag)
     assert ssh.ingetrokken == [1]
     assert ssh.gereageerd == [3]  # vrijgekomen plek meteen gebruikt; 4 past niet
-    assert ag.weg == ["kamerbot1"]
-    assert sorted(ag.gezet) == ["kamerbot2", "kamerbot3", "kamerbot5"]
+    assert ag.gezet == []  # alleen na een uitnodiging in de agenda, en die is er (nog) niet
     assert "1 ingetrokken" in s
     assert any("ingetrokken" in b for b in tg.berichten)
     # Tweede ronde: niets dubbel in de agenda.
@@ -302,22 +313,76 @@ def test_beoordelaar_stopt_na_drie_fouten(tmp_path):
     assert Kapot.aantal == 3
 
 
-def test_zelf_ingetrokken_reactie_verdwijnt_uit_de_agenda(tmp_path):
+def afspraak_op(dagen):
+    start = (datetime.now(timezone.utc) + timedelta(days=dagen)).astimezone(NL).isoformat()
+    return {"summary": f"Hospiteren over {dagen} dagen", "start": {"dateTime": start}}
+
+
+def test_alleen_uitgenodigd_komt_in_de_agenda(tmp_path):
     cfg = Config()
     cfg.data_dir, cfg.auto_reageren = tmp_path, True
-    k = kamer(5, al_gereageerd=True, positie=8)
-    ag = FakeAgenda()
-    ronde(cfg, ssh=FakeSSH([k], actief=1), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag)
-    assert ag.gezet == ["kamerbot5"]
-    # Zelf ingetrokken op de site: de kamer staat er nog, maar zonder reactie.
-    los = kamer(5, positie=8, straat="Cambridgelaan")
-    ag2 = FakeAgenda()
-    ronde(cfg, ssh=FakeSSH([los], actief=0), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag2)
-    assert ag2.weg == ["kamerbot5"]
-    # Daarna niet nog eens.
-    ag3 = FakeAgenda()
-    ronde(cfg, ssh=FakeSSH([los], actief=0), tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=ag3)
-    assert ag3.weg == []
+    open_ = kamer(2, al_gereageerd=True, positie=8)
+    reacties = [Reactie(2, "invited", kijkdatum="2026-11-20T12:00:00Z"),
+                Reactie(3, "closed", reden="HospiterenNoEligbleUser"),
+                Reactie(4, "active"),
+                Reactie(9, "hospiteren", kijkdatum="2026-11-21T12:00:00Z")]  # gesloten kamer, niet in aanbod
+    ag, tg = FakeAgenda(), FakeTG()
+    ronde(cfg, ssh=FakeSSH([open_], actief=4, reacties=reacties), tg=tg, beoordelaar=GeenOordeel(), agenda=ag)
+    assert sorted(ag.gezet) == ["kamerbot2", "kamerbot9"]
+    assert ag.bestaand["kamerbot2"]["start"]["dateTime"].startswith("2026-11-20T19:30")
+    assert "SSH-kamer 9" in ag.bestaand["kamerbot9"]["summary"]  # ophalen mislukt: toch een afspraak
+    assert sum("Uitgenodigd" in b for b in tg.berichten) == 2
+    # Tweede ronde: niets dubbel, geen tweede melding.
+    ag2 = FakeAgenda(ag.bestaand)
+    ronde(cfg, ssh=FakeSSH([open_], actief=4, reacties=reacties), tg=tg, beoordelaar=GeenOordeel(), agenda=ag2)
+    assert ag2.gezet == [] and ag2.weg == []
+    assert sum("Uitgenodigd" in b for b in tg.berichten) == 2
+
+
+def test_afspraak_zonder_uitnodiging_gaat_eruit(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    db = Opslag(tmp_path / "kamerbot.db")
+    for flow in (5, 6, 7, 8, 10):
+        db.zet("agenda", str(flow), "abc")
+    ag = FakeAgenda({f"kamerbot{f}": afspraak_op(5) for f in (5, 6, 7, 10)} | {"kamerbot8": afspraak_op(-2),
+                                                                             "kamerbot99": afspraak_op(3)})
+    reacties = [Reactie(5, "closed", reden="HospiterenNoEligbleUser"),  # k15: geen top 15
+                Reactie(6, "closed", reden="HospiterenSomeoneHasBeenSelected"),  # k10: niet gekozen
+                Reactie(8, "closed", reden="HospiterenSomeoneHasBeenSelected"),  # avond al geweest
+                Reactie(10, "deleted")]  # ingetrokken; 7 staat er niet eens meer in
+    tg = FakeTG()
+    ronde(cfg, ssh=FakeSSH([], actief=0, reacties=reacties), tg=tg, beoordelaar=GeenOordeel(), agenda=ag)
+    assert sorted(ag.weg) == ["kamerbot10", "kamerbot5", "kamerbot6", "kamerbot7"]
+    assert "kamerbot8" in ag.bestaand and "kamerbot99" in ag.bestaand  # verleden en niet van de bot: blijft
+    melding = next(b for b in tg.berichten if "Uit je agenda" in b)
+    assert "geen top 15" in melding and "niet uitgekozen" in melding and "ingetrokken" in melding
+    assert not db.db.execute("SELECT 1 FROM kamers WHERE bron='agenda'").fetchone()
+
+
+def test_onleesbare_reacties_laten_de_agenda_met_rust(tmp_path):
+    cfg = Config()
+    cfg.data_dir = tmp_path
+    Opslag(tmp_path / "kamerbot.db").zet("agenda", "5", "abc")
+    ag = FakeAgenda({"kamerbot5": afspraak_op(5)})
+
+    class Kapot(FakeSSH):
+        def reacties(self):
+            return reacties_uit([{"Iets": 1}])
+
+    tg = FakeTG()
+    ronde(cfg, ssh=Kapot([], actief=1), tg=tg, beoordelaar=GeenOordeel(), agenda=ag)
+    assert ag.weg == [] and ag.gezet == []
+    assert any("reacties bij SSH" in b for b in tg.berichten)
+
+
+def test_reacties_uit_leest_de_velden_van_mijn_reacties():
+    r = reacties_uit([{"flowId": "1478671", "status": "Invited", "kind": "Hospiteren", "viewingOn": "2026-11-20T12:00:00Z",
+                       "CurrentAdjustedPosition": 7, "ApplicantCount": 37},
+                      {"Offer": {"FlowId": 2}, "Status": "closed", "StatusReason": "HospiterenNoEligbleUser"}])
+    assert [(x.flow_id, x.status, x.uitgenodigd) for x in r] == [(1478671, "invited", True), (2, "closed", False)]
+    assert r[0].kijkdatum == "2026-11-20T12:00:00Z" and r[0].positie == 7 and r[1].reden == "HospiterenNoEligbleUser"
+    assert reacties_uit([]) == []
 
 
 def test_eigen_reactie_op_vrouwenhuis_wordt_ingetrokken(tmp_path):

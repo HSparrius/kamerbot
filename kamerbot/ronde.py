@@ -16,7 +16,7 @@ from .beoordeling import Beoordelaar
 from .config import Config
 from .login import log_in
 from .opslag import Opslag
-from .ssh import Kamer, SSHClient
+from .ssh import Kamer, Reactie, SSHClient
 from .telegram import Telegram
 
 log = logging.getLogger("kamerbot")
@@ -136,16 +136,99 @@ def agenda_bij(agenda: Agenda | None, db: Opslag, tg: Telegram, k: Kamer) -> Non
     db.db.commit()
 
 
-def agenda_weg(agenda: Agenda | None, db: Opslag, tg: Telegram, k: Kamer) -> None:
+# Waarom een reactie geen hospiteeravond (meer) heeft, in de woorden van "Mijn reacties" op sshxl.nl.
+REDENEN = {
+    "hospiterensomeonehasbeenselected": "het huis heeft je niet uitgekozen",
+    "hospiterennoeligbleuser": "niet genoeg inschrijftijd (geen top 15)",
+    "eligibleuserdeclinedbyuser": "door jou afgemeld",
+    "eligibleuserdeclinedbysystem": "afgemeld door SSH",
+    "eligibleuserdeclinedbyemployee": "afgemeld door SSH",
+}
+
+
+def reden_tekst(r: Reactie | None) -> str:
+    if r is None:
+        return "geen reactie meer"
+    if r.reden and r.reden.lower() in REDENEN:
+        return REDENEN[r.reden.lower()]
+    if r.status == "deleted":
+        return "reactie ingetrokken"
+    if r.status == "closed":
+        return f"gesloten ({r.reden})" if r.reden else "gesloten zonder uitnodiging"
+    return "nog geen uitnodiging"
+
+
+def kamer_voor(ssh: SSHClient, r: Reactie, aanbod: dict[int, Kamer]) -> Kamer:
+    """De kamer bij een uitnodiging: uit het aanbod, of los opgehaald als de deadline al voorbij is."""
+    k = aanbod.get(r.flow_id)
+    if k is None:
+        try:
+            k = ssh.kamer(r.flow_id)
+        except (httpx.HTTPError, KeyError, IndexError, TypeError) as e:
+            log.warning("Kamer %s ophalen mislukt: %s", r.flow_id, type(e).__name__)
+            k = Kamer(flow_id=r.flow_id, wocas_id=r.wocas_id, soort=r.soort or "Hospiteren", type="Kamer",
+                      brutto_huur=0, deadline=datetime.now(timezone.utc), straat=f"SSH-kamer {r.flow_id}")
+    if r.kijkdatum:
+        k.bezichtiging = r.kijkdatum
+    if r.positie:
+        k.positie, k.aantal_reacties = r.positie, r.aantal or k.aantal_reacties
+    return k
+
+
+def agenda_rijen(db: Opslag) -> list[int]:
+    """De afspraken die de bot zelf in je agenda zette (alleen die raakt hij aan)."""
+    return [int(i) for (i,) in db.db.execute("SELECT DISTINCT id FROM kamers WHERE bron='agenda'") if i.isdigit()]
+
+
+def bijwerken_agenda(agenda: Agenda | None, db: Opslag, tg: Telegram, ssh: SSHClient,
+                     aanbod: dict[int, Kamer], beoordelaar: Beoordelaar) -> None:
+    """Alleen hospiteeravonden waarvoor je echt bent uitgenodigd (Hidde, 4 nov 2026). SSH nodigt pas uit
+    als de reactietermijn voorbij is (top 15, drie dagen vóór de avond), dus een reactie alleen is niet genoeg.
+    Een afspraak van de bot zonder uitnodiging (niet gekozen, geen top 15, ingetrokken) gaat eruit."""
     if agenda is None:
         return
     try:
-        agenda.verwijder(afspraak_id(k))
-    except AgendaFout as e:
-        agendafout(db, tg, e)
+        reacties = {r.flow_id: r for r in ssh.reacties()}
+    except (httpx.HTTPError, ValueError) as e:
+        # Zonder de status weet de bot niet wat klopt: dan niets toevoegen en niets weghalen.
+        fout = httpfout(e) if isinstance(e, httpx.HTTPError) else str(e)
+        agendafout(db, tg, Exception(f"je reacties bij SSH ophalen lukt niet ({fout})"))
         return
-    db.db.execute("DELETE FROM kamers WHERE bron='agenda' AND id=?", (str(k.flow_id),))
-    db.db.commit()
+
+    for r in reacties.values():
+        if not r.uitgenodigd:
+            continue
+        k = kamer_voor(ssh, r, aanbod)
+        if k.oordeel is None:
+            k.oordeel = beoordelaar.beoordeel(k)  # voor de tijd van de avond, als die in het verhaaltje staat
+        if not db.heeft("ssh", str(r.flow_id), "uitgenodigd"):
+            if tg.stuur(f"🎉 Uitgenodigd voor de hospiteeravond:\n{regel(k)}"):
+                db.zet("ssh", str(r.flow_id), "uitgenodigd")
+        agenda_bij(agenda, db, tg, k)
+
+    weg = []
+    for flow in agenda_rijen(db):
+        r = reacties.get(flow)
+        if r is not None and r.uitgenodigd:
+            continue
+        event_id = f"kamerbot{flow}"
+        try:
+            event = agenda.lees(event_id)
+            start = ((event or {}).get("start") or {}).get("dateTime")
+            # Een avond die al geweest is laat de bot staan; die hoort bij je geschiedenis.
+            if event and start and datetime.fromisoformat(start) < datetime.now(timezone.utc):
+                event = None
+            elif event:
+                agenda.verwijder(event_id)
+        except AgendaFout as e:
+            agendafout(db, tg, e)
+            return
+        db.db.execute("DELETE FROM kamers WHERE bron='agenda' AND id=?", (str(flow),))
+        db.db.commit()
+        if event:
+            weg.append(f"• {html.escape(event.get('summary') or event_id)}, {start[:10]}: {reden_tekst(r)}")
+    if weg:
+        tg.stuur("📅 Uit je agenda gehaald (niet uitgenodigd):\n" + "\n".join(weg))
 
 
 def httpfout(e: httpx.HTTPError) -> str:
@@ -185,7 +268,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             log.warning("Details %s overgeslagen: %s", k.adres, httpfout(e))
             continue
         if k.al_gereageerd:
-            k.oordeel = beoordelaar.beoordeel(k)  # voor de tijd in de agenda
+            k.oordeel = beoordelaar.beoordeel(k)
             # Zelf gereageerd en blijkt het huis toch iets anders te zoeken: meteen intrekken. Reacties die
             # je zelf op de site plaatste laat de bot staan; dat is jouw keuze.
             fout = selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k)
@@ -196,7 +279,6 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
                     log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
                 else:
                     vergeet_reactie(db, k)
-                    agenda_weg(agenda, db, tg, k)
                     tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}):\n{regel(k)}")
                     continue
             gereageerd.append(k)
@@ -261,7 +343,6 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         vergeet_reactie(db, k)
         ingetrokken += 1
         gereageerd.remove(k)
-        agenda_weg(agenda, db, tg, k)
         tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}{zelf}) voor {html.escape(voor.adres)} "
                  f"(plek {voor.positie}, {waarom(voor)}):\n{regel(k)}")
     if not cfg.auto_reageren:
@@ -288,15 +369,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         tg.stuur(f"✅ Gereageerd op:\n{regel(k)}")
         gereageerd.append(k)
 
-    for k in gereageerd:
-        agenda_bij(agenda, db, tg, k)
-    # Reactie weg (zelf ingetrokken op de site) terwijl de kamer nog in het aanbod staat: afspraak weg.
-    # Staat de kamer niet meer in het aanbod, dan is de deadline voorbij en kan de avond nog doorgaan.
-    nog_actief = {k.flow_id for k in gereageerd}
-    for k in aanbod:
-        if k.flow_id not in nog_actief and db.db.execute(
-                "SELECT 1 FROM kamers WHERE bron='agenda' AND id=?", (str(k.flow_id),)).fetchone():
-            agenda_weg(agenda, db, tg, k)
+    bijwerken_agenda(agenda, db, tg, ssh, {k.flow_id: k for k in aanbod}, beoordelaar)
 
     samenvatting = f"{len(kandidaten)} kandidaten, {vrij} plekken vrij, {len(keuze)} gekozen"
     if ingetrokken:

@@ -26,9 +26,11 @@ automatisch op de beste kamers, met meldingen via Telegram.
   Past het niet, dan slaat hij de kamer over. Elke tekst wordt maar één keer gelezen.
 - **Score:** binnen dezelfde deadline weegt je positie het zwaarst, daarna het cijfer van het
   taalmodel, m², huur en of het een zelfstandige woning is.
-- **Agenda** (optioneel, `GOOGLE_SERVICE_ACCOUNT_JSON` + `GCAL_AGENDA_ID`): voor elke kamer waarop
-  je reageerde komt de hospiteeravond in je agenda (tijd uit het verhaaltje, anders 19:30–22:00
-  met "(tijd onbekend)"). Trekt hij een reactie in, dan verdwijnt de afspraak.
+- **Agenda** (optioneel, `GOOGLE_SERVICE_ACCOUNT_JSON` + `GCAL_AGENDA_ID`): alleen een
+  hospiteeravond waarvoor SSH je echt heeft uitgenodigd (status in "Mijn reacties") komt in je agenda,
+  met een 🎉-melding (tijd uit het verhaaltje, anders 19:30–22:00 met "(tijd onbekend)"). Niet gekozen,
+  geen top 15 of ingetrokken: dan haalt hij zijn eigen afspraak weg en meldt welke. Avonden die al geweest
+  zijn laat hij staan, en afspraken die je zelf maakte raakt hij niet aan.
 - **Plekken:** hij vult alleen de vrije plekken (7 min je actieve reacties).
 
 ## Installatie op de VPS

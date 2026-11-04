@@ -107,6 +107,69 @@ def vul_details_aan(k: Kamer, offer: dict) -> Kamer:
     return k
 
 
+def veld(d: dict, *namen: str):
+    """Waarde van het eerste veld dat bestaat, zonder op hoofdletters te letten (FlowId of flowId),
+    ook één laag dieper (bijv. {"Offer": {"FlowId": ...}}): de vorm van reactions is niet uit een HAR bekend."""
+    if not isinstance(d, dict):
+        return None
+    klein = {str(k).lower(): v for k, v in d.items()}
+    for n in namen:
+        if klein.get(n.lower()) not in (None, ""):
+            return klein[n.lower()]
+    for v in d.values():
+        if isinstance(v, dict):
+            gevonden = veld(v, *namen)
+            if gevonden not in (None, ""):
+                return gevonden
+    return None
+
+
+@dataclass
+class Reactie:
+    """Eén regel van "Mijn reacties" (GET /api/v1/reactions; velden uit de JS van sshxl.nl, 4 nov 2026).
+    Status "invited" = uitgenodigd, "hospiteren" = avond ingepland; "deleted"/"closed" met een StatusReason
+    zoals HospiterenSomeoneHasBeenSelected (huis koos een ander) of HospiterenNoEligbleUser (geen top 15)."""
+    flow_id: int
+    status: str
+    reden: str = ""
+    soort: str = ""
+    wocas_id: str = ""
+    kijkdatum: str | None = None
+    positie: int | None = None
+    aantal: int | None = None
+
+    @property
+    def uitgenodigd(self) -> bool:
+        return self.status in ("invited", "hospiteren")
+
+
+def reacties_uit(lijst: object) -> list[Reactie]:
+    if isinstance(lijst, dict):  # {"Items": [...]} of iets dergelijks
+        lijst = next((v for v in lijst.values() if isinstance(v, list)), [])
+    uit = []
+    for d in lijst or []:
+        flow = veld(d, "FlowId", "OfferFlowId")
+        status = veld(d, "Status")
+        if flow is None or status is None:
+            continue
+        try:
+            flow = int(flow)
+        except (TypeError, ValueError):
+            continue
+        pos = veld(d, "CurrentAdjustedPosition", "CurrentPosition")
+        uit.append(Reactie(
+            flow_id=flow, status=str(status).strip().lower(), reden=str(veld(d, "StatusReason") or ""),
+            soort=str(veld(d, "Kind") or ""), wocas_id=str(veld(d, "WocasId") or ""),
+            kijkdatum=veld(d, "ViewingOn", "ViewingDate", "HospiteerDate"),
+            positie=pos if isinstance(pos, int) and pos > 0 else None,
+            aantal=veld(d, "ApplicantCount")))
+    if lijst and not uit:
+        # Wel reacties, maar geen FlowId/Status te vinden: SSH heeft de vorm veranderd. Liever niets
+        # doen dan alle afspraken weghalen.
+        raise ValueError("reacties van SSH zonder FlowId of Status")
+    return uit
+
+
 class SSHClient:
     def __init__(self, cookie_file: Path):
         self.cookie_file = cookie_file
@@ -167,6 +230,19 @@ class SSHClient:
 
     def details(self, k: Kamer) -> Kamer:
         return vul_details_aan(k, self._get(f"/api/v1/offer/{k.flow_id}"))
+
+    def reacties(self) -> list[Reactie]:
+        return reacties_uit(self._get("/api/v1/reactions"))
+
+    def kamer(self, flow_id: int) -> Kamer:
+        """Een kamer die niet meer in het aanbod staat (deadline voorbij), voor de agenda."""
+        offer = self._get(f"/api/v1/offer/{flow_id}")
+        try:
+            details = self._get("/api/v1/offer/getOffersDetails", wocasIds=str(offer["WocasId"]))
+        except httpx.HTTPError:
+            details = []
+        k = kamers_uit_lijst([offer], details)[0]
+        return vul_details_aan(k, offer)
 
     def kan_reageren(self, k: Kamer) -> tuple[bool, str]:
         r = self._get(f"/api/v1/offer/canapply/{k.flow_id}")
