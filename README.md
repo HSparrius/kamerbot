@@ -70,7 +70,7 @@ Net als bij de ritbot: merge de PR op GitHub en stuur **/update** naar de bot. H
 nieuwste versie op, herstart en meldt welke versie draait. Start de nieuwe versie niet, dan
 zet hij de vorige vanzelf terug.
 
-Andere commando's: **/status** (laatste en volgende ronde), **/nu** (meteen een ronde draaien) en **/overzicht** (waar je nu op gereageerd hebt en op welke plek je staat, eerst wat het eerst sluit).
+Andere commando's: **/status** (laatste en volgende ronde), **/nu** (meteen een ronde draaien) en **/overzicht** (waar je nu op gereageerd hebt en op welke plek je staat, eerst wat het eerst sluit). **/keuzes** laat per kamer in het aanbod zien wat de laatste ronde besloot, gegroepeerd op reden (gekozen, blijft staan, nog te veel tijd over, plek te hoog, zoekt een vrouw, uitgesloten locatie, te duur, te ver fietsen, enz.). De ronde schrijft dat zelf weg in `data/keuzes.json`, dus het zijn precies de redenen waarop de bot handelde; stuur /nu voor een verse stand.
 Log bekijken: `journalctl -u kamerbot -f`.
 
 ## Telegram
