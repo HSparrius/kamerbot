@@ -49,10 +49,19 @@ install_rev() { # zet versie $1 neer en herstart; 0 als hij binnen WAIT_S draait
 rm -f "$DATA/update.request"
 cd "$APP" || exit 1
 prev=$(git rev-parse HEAD)
-if ! git fetch -q origin main; then
-  notice "❌ Bijwerken mislukt: kon de nieuwe versie niet ophalen bij GitHub. Er is niets veranderd."
-  exit 1
-fi
+# GitHub hapert soms even: drie pogingen, en bij falen de foutmelding van git zelf meesturen.
+for poging in 1 2 3; do
+  if fout=$(timeout 120 git fetch -q origin main 2>&1); then
+    break
+  fi
+  if (( poging == 3 )); then
+    notice "❌ Bijwerken mislukt: kon de nieuwe versie niet ophalen bij GitHub. Er is niets veranderd.
+Melding van git:
+$(printf '%s\n' "$fout" | tail -n 5)"
+    exit 1
+  fi
+  sleep $(( poging * 10 ))
+done
 new=$(git rev-parse origin/main)
 if [[ "$new" == "$prev" ]]; then
   notice "✅ Je hebt al de nieuwste versie (${prev:0:7})."
