@@ -57,7 +57,8 @@ for poging in 1 2 3; do
   if (( poging == 3 )); then
     notice "❌ Bijwerken mislukt: kon de nieuwe versie niet ophalen bij GitHub. Er is niets veranderd.
 Melding van git:
-$(printf '%s\n' "$fout" | tail -n 5)"
+$(printf '%s\n' "$fout" | tail -n 5)
+Meestal is dit een storing bij GitHub (kijk op githubstatus.com). Stuur later gewoon opnieuw /update."
     exit 1
   fi
   sleep $(( poging * 10 ))
