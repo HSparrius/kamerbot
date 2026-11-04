@@ -13,7 +13,7 @@ from kamerbot.beoordeling import Beoordelaar, Oordeel
 from kamerbot.config import Config
 from kamerbot.dienst import Planning
 from kamerbot.opslag import Opslag
-from kamerbot.ronde import ronde
+from kamerbot.ronde import overzicht, ronde
 from kamerbot.ssh import NL, Kamer
 
 
@@ -482,3 +482,26 @@ def test_ssh_500_wordt_opnieuw_geprobeerd_en_een_kamer_overgeslagen(tmp_path, mo
     ssh = Kapot([kamer(2), kamer(3)], actief=3)
     ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
     assert ssh.gereageerd == [3]
+
+
+def test_overzicht_toont_reacties_op_volgorde_van_deadline(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.max_actief = tmp_path, 7
+    nu = datetime.now(timezone.utc)
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "1", "gereageerd")
+    later = kamer(1, al_gereageerd=True, positie=2, aantal_reacties=5, deadline=nu + timedelta(days=2))
+    eerder = kamer(2, al_gereageerd=True, positie=3, aantal_reacties=6, deadline=nu + timedelta(days=1))
+    niet = kamer(3)
+    tekst = overzicht(cfg, ssh=FakeSSH([later, eerder, niet], actief=2), tg=FakeTG())
+    assert "(2 van 7)" in tekst
+    assert tekst.index("#3 van 6") < tekst.index("#2 van 5")
+    assert "Biltstraat 3" not in tekst
+    regel_eerder = [r for r in tekst.splitlines() if "#3 van 6" in r][0]
+    assert "zelf geplaatst" in regel_eerder  # niet door de bot geplaatst
+    assert "zelf geplaatst" not in [r for r in tekst.splitlines() if "#2 van 5" in r][0]
+
+
+def test_overzicht_zonder_reacties(tmp_path):
+    cfg = Config()
+    cfg.data_dir = tmp_path
+    assert "geen reacties" in overzicht(cfg, ssh=FakeSSH([kamer(1)], actief=0), tg=FakeTG())
