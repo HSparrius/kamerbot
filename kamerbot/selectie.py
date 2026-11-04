@@ -146,12 +146,32 @@ def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime 
 
 
 def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int,
-            nu: datetime | None = None) -> tuple[list[Kamer], list[Kamer]]:
+            nu: datetime | None = None) -> tuple[list[tuple[Kamer, Kamer]], list[Kamer]]:
     """Welke reacties van de bot intrekken en op welke nieuwe kamers reageren, met `plekken` plekken
     voor de bot (vrije plekken + zijn eigen reacties). De beste `plekken` kamers volgens rang() blijven;
-    bij gelijke rang wint een bestaande reactie. Zo wordt er alleen ingetrokken als er te veel zijn."""
+    bij gelijke rang wint een bestaande reactie. Zo wordt er alleen ingetrokken als er te veel zijn.
+
+    Ruilen mag alleen voor een kamer die niet later sluit dan de reactie die wijkt (Hidde, 4 nov 2026:
+    Amsterdamsestraatweg #3, sluit do, werd ingetrokken voor Gerbrandypad #2, sluit vr). Een kamer die
+    later sluit kan wachten: tegen die tijd is de andere reactie beslist, en je plek hangt niet af van
+    hoe vroeg je reageert. Wacht hij te lang, dan krijgt hij in zijn laatste 24 uur voorrang.
+
+    Geeft (ruil, keuze): ruil is een lijst (in te trekken reactie, kamer die zijn plek krijgt)."""
     nu = nu or datetime.now(timezone.utc)
     alles = sorted([(rang(k, nu), 0, i, k) for i, k in enumerate(eigen)]
                    + [(rang(k, nu), 1, i, k) for i, k in enumerate(nieuw)], key=lambda t: t[:3])
-    blijft = {id(t[3]) for t in alles[: max(plekken, 0)]}
-    return [k for k in eigen if id(k) not in blijft], [k for k in nieuw if id(k) in blijft]
+    top = alles[: max(plekken, 0)]
+    blijft = {id(t[3]) for t in top}
+    gekozen = [t[3] for t in top if t[1] == 1]  # nieuwe kamers, beste eerst
+    # Kandidaten om in te trekken, slechtste eerst.
+    weg = [t[3] for t in reversed(alles) if t[1] == 0 and id(t[3]) not in blijft]
+    vrij = max(plekken - len(eigen), 0)
+    keuze, ruil = gekozen[:vrij], []
+    for n in gekozen[vrij:]:
+        oud = next((e for e in weg if e.deadline >= n.deadline), None)
+        if oud is None:
+            continue  # wachten: alles wat zou moeten wijken sluit eerder
+        weg.remove(oud)
+        ruil.append((oud, n))
+        keuze.append(n)
+    return ruil, keuze
