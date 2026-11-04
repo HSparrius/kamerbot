@@ -222,10 +222,12 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             for k in nieuw:
                 db.zet("ssh", str(k.flow_id), "gemeld")
 
-    # Plekken voor de bot: wat vrij is plus zijn eigen reacties. Wat je zelf op de site doet, telt mee
-    # in het aantal maar blijft altijd staan (Hidde, 18 okt 2026).
+    # Plekken voor de bot: wat vrij is plus de reacties die hij mag ruilen. Sinds 4 nov 2026 (Hidde) zijn dat
+    # ook je handmatige reacties, tenzij INTREKKEN_HANDMATIG=0. Reacties op kamers die niet meer in het
+    # aanbod staan (deadline voorbij) tellen bij SSH nog mee, maar de bot ziet en raakt ze niet.
     vrij = max(cfg.max_actief - ssh.actieve_reacties(), 0)
-    eigen = [k for k in gereageerd if db.heeft("ssh", str(k.flow_id), "gereageerd")]
+    eigen = [k for k in gereageerd
+             if cfg.intrekken_handmatig or db.heeft("ssh", str(k.flow_id), "gereageerd")]
     plekken = vrij + len(eigen)
     # Kamers waar SSH je op laat reageren, beste eerst (binnen 24 uur sluitend, dan laagste plek).
     mogelijk = []
@@ -249,6 +251,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     for k, voor in ruil:
         if not cfg.auto_reageren:
             continue
+        zelf = "" if db.heeft("ssh", str(k.flow_id), "gereageerd") else ", zelf geplaatst"
         try:
             ssh.trek_in(k)
         except httpx.HTTPError as e:
@@ -259,7 +262,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         ingetrokken += 1
         gereageerd.remove(k)
         agenda_weg(agenda, db, tg, k)
-        tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}) voor {html.escape(voor.adres)} "
+        tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}{zelf}) voor {html.escape(voor.adres)} "
                  f"(plek {voor.positie}, {waarom(voor)}):\n{regel(k)}")
     if not cfg.auto_reageren:
         keuze = keuze[:vrij]

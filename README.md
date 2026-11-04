@@ -17,7 +17,9 @@ automatisch op de beste kamers, met meldingen via Telegram.
   Een bestaande reactie wordt alleen ingetrokken voor een kamer die niet later sluit; een kamer die
   later sluit wacht tot een volgende ronde.
   Zijn er meer kamers dan plekken (max 7), dan valt de kamer met de slechtste plek af; is dat een
-  bestaande reactie van de bot, dan trekt hij die in. Reacties die je zelf plaatst blijven staan.
+  bestaande reactie, dan trekt hij die in, ook als je die zelf op de site plaatste
+  (`INTREKKEN_HANDMATIG=0` om die te laten staan). Reacties op kamers die al gesloten zijn tellen
+  bij SSH nog mee in de 7, maar die raakt de bot niet aan.
   Geen plekgrens meer, tenzij je `SSH_MAX_POSITIE` zet.
 - **Taalmodel** (optioneel, `ANTHROPIC_API_KEY`): Claude leest het verhaaltje, zegt of je past bij
   wie ze zoeken (cijfer 0–10 met een reden in de melding) en haalt de hospiteertijd eruit.
