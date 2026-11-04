@@ -493,7 +493,7 @@ def test_overzicht_toont_reacties_op_volgorde_van_deadline(tmp_path):
     eerder = kamer(2, al_gereageerd=True, positie=3, aantal_reacties=6, deadline=nu + timedelta(days=1))
     niet = kamer(3)
     tekst = overzicht(cfg, ssh=FakeSSH([later, eerder, niet], actief=2), tg=FakeTG())
-    assert "(2 van 7)" in tekst
+    assert "2 van 7 plekken bezet" in tekst
     assert tekst.index("#3 van 6") < tekst.index("#2 van 5")
     assert "Biltstraat 3" not in tekst
     regel_eerder = [r for r in tekst.splitlines() if "#3 van 6" in r][0]
@@ -504,4 +504,12 @@ def test_overzicht_toont_reacties_op_volgorde_van_deadline(tmp_path):
 def test_overzicht_zonder_reacties(tmp_path):
     cfg = Config()
     cfg.data_dir = tmp_path
-    assert "geen reacties" in overzicht(cfg, ssh=FakeSSH([kamer(1)], actief=0), tg=FakeTG())
+    assert "Geen reacties" in overzicht(cfg, ssh=FakeSSH([kamer(1)], actief=0), tg=FakeTG())
+
+
+def test_overzicht_telt_reacties_op_gesloten_kamers_mee(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.max_actief = tmp_path, 7
+    tekst = overzicht(cfg, ssh=FakeSSH([kamer(1, al_gereageerd=True, positie=2)], actief=3), tg=FakeTG())
+    assert "3 van 7 plekken bezet" in tekst
+    assert "+ 2 reactie(s) op kamers die niet meer in het aanbod staan" in tekst
