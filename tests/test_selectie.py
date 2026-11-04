@@ -121,7 +121,26 @@ def test_bij_te_veel_valt_de_slechtste_plek_af():
     # Eén plek te weinig: de slechtste plek buiten 24 uur (80) valt af.
     assert selectie.verdeel(eigen, nieuw, 4, nu) == ([], [nieuw_24u])
     # Nog een te weinig: dan je bestaande reactie op plek 60.
-    assert selectie.verdeel(eigen, nieuw, 3, nu) == ([eigen_slecht], [nieuw_24u])
+    assert selectie.verdeel(eigen, nieuw, 3, nu) == ([(eigen_slecht, nieuw_24u)], [nieuw_24u])
+
+
+def test_niet_intrekken_voor_een_kamer_die_later_sluit():
+    """4 nov 2026: Amsterdamsestraatweg (#3, sluit do) moest wijken voor Gerbrandypad (#2, sluit vr)."""
+    from datetime import timedelta
+    nu = datetime(2026, 11, 4, 8, 38, tzinfo=timezone.utc)
+    ks = list(kamers().values())[:4]
+    amsterdamsestraatweg, gerbrandypad, eigen_zat, nieuw_morgen = ks
+    for k, uur, plek in ((amsterdamsestraatweg, 38, 3), (gerbrandypad, 62, 2),
+                         (eigen_zat, 86, 9), (nieuw_morgen, 38, 1)):
+        k.deadline, k.positie = nu + timedelta(hours=uur), plek
+    # Vol: Gerbrandypad wacht, Amsterdamsestraatweg blijft staan.
+    assert selectie.verdeel([amsterdamsestraatweg], [gerbrandypad], 1, nu) == ([], [])
+    # Sluit de nieuwe kamer even vroeg of eerder, dan mag de slechtere plek wel wijken.
+    assert selectie.verdeel([amsterdamsestraatweg], [nieuw_morgen], 1, nu) == (
+        [(amsterdamsestraatweg, nieuw_morgen)], [nieuw_morgen])
+    # Sluit de slechtste plek later (za), dan wijkt die gewoon.
+    assert selectie.verdeel([amsterdamsestraatweg, eigen_zat], [gerbrandypad], 2, nu) == (
+        [(eigen_zat, gerbrandypad)], [gerbrandypad])
 
 
 def test_verhaaltje_dat_alleen_een_vrouw_zoekt():

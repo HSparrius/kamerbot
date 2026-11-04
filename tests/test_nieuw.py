@@ -17,9 +17,13 @@ from kamerbot.ronde import overzicht, ronde
 from kamerbot.ssh import NL, Kamer
 
 
+# Eén vaste deadline voor alle testkamers, zoals bij SSH (alles sluit om 23:59).
+DEADLINE = datetime.now(timezone.utc) + timedelta(hours=5)
+
+
 def kamer(flow_id=1, **kw):
     k = Kamer(flow_id=flow_id, wocas_id=str(flow_id), soort="Hospiteren", type="Kamer", brutto_huur=500,
-              deadline=datetime.now(timezone.utc) + timedelta(hours=5), straat="Biltstraat", huisnummer=str(flow_id),
+              deadline=DEADLINE, straat="Biltstraat", huisnummer=str(flow_id),
               stad="UTRECHT", m2=12, geslacht="none", verhaaltje="Wij zoeken een gezellige huisgenoot.",
               positie=10, aantal_reacties=40, bezichtiging="2026-10-25T12:00:00Z")
     for a, v in kw.items():

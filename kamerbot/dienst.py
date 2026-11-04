@@ -209,7 +209,7 @@ class Dienst:
                 f"Laatste ronde: {self.laatste}\n"
                 f"Volgende ronde: {f'{volgende:%a %d-%m %H:%M}' if volgende else 'onbekend'}\n"
                 f"Automatisch reageren: {auto}\n"
-                f"Voorrang: sluit binnen {selectie.VOORRANG_UUR} uur, dan laagste plek"
+                f"Voorrang: sluit binnen {selectie.VOORRANG_UUR} uur, dan laagste plek; ruilen alleen voor een kamer die niet later sluit"
                 + (f"\nPlekgrens: {self.cfg.max_positie}" if self.cfg.max_positie else "")
             )
         elif cmd in ("/start", "/help"):

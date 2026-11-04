@@ -5,6 +5,7 @@ import hashlib
 import html
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -36,6 +37,13 @@ def regel(k: Kamer) -> str:
     if k.oordeel is not None:
         tekst += f"\n   🤖 {k.oordeel.cijfer}/10: {html.escape(k.oordeel.reden)}"
     return tekst
+
+
+def waarom(k: Kamer) -> str:
+    """Waarom een nieuwe kamer voorgaat, voor de intrekmelding."""
+    if k.deadline - datetime.now(timezone.utc) <= timedelta(hours=selectie.VOORRANG_UUR):
+        return f"sluit binnen {selectie.VOORRANG_UUR} uur"
+    return f"betere plek, sluit {k.deadline:%a %d-%m}"
 
 
 def inloggen(cfg: Config, db: Opslag, tg: Telegram) -> SSHClient:
@@ -225,24 +233,26 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         mogelijk.append(k)
 
     # Te veel kamers voor 7 plekken: de kamer waar je het slechtst staat valt af, ook als dat een
-    # bestaande reactie is (Hidde, 3 nov 2026). Intrekken kost niets: je plek hangt af van je
-    # inschrijfduur, dus later opnieuw reageren geeft dezelfde plek.
-    intrekken, keuze = selectie.verdeel(eigen, mogelijk, plekken)
+    # bestaande reactie is (Hidde, 3 nov 2026), maar alleen voor een kamer die niet later sluit
+    # (Hidde, 4 nov 2026). Intrekken kost niets: je plek hangt af van je inschrijfduur, dus later
+    # opnieuw reageren geeft dezelfde plek.
+    ruil, keuze = selectie.verdeel(eigen, mogelijk, plekken)
     ingetrokken = 0
-    for k in intrekken:
+    for k, voor in ruil:
         if not cfg.auto_reageren:
             continue
         try:
             ssh.trek_in(k)
         except httpx.HTTPError as e:
             log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
-            keuze = keuze[:-1]  # die plek komt dan niet vrij
+            keuze.remove(voor)  # die plek komt dan niet vrij
             continue
         vergeet_reactie(db, k)
         ingetrokken += 1
         gereageerd.remove(k)
         agenda_weg(agenda, db, tg, k)
-        tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}), de plek was nodig voor een kamer met voorrang:\n{regel(k)}")
+        tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}) voor {html.escape(voor.adres)} "
+                 f"(plek {voor.positie}, {waarom(voor)}):\n{regel(k)}")
     if not cfg.auto_reageren:
         keuze = keuze[:vrij]
     log.info("%d kandidaten, %d plekken vrij, %d gekozen", len(kandidaten), vrij, len(keuze))

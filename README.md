@@ -14,6 +14,8 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Fietstijd:** alleen kamers binnen 10 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
   geschat uit de hemelsbrede afstand via PDOK. Onvindbaar adres = gaat gewoon door.
 - **Voorrang:** kamers die binnen 24 uur sluiten gaan voor, daarna de laagste plek op de wachtlijst.
+  Een bestaande reactie wordt alleen ingetrokken voor een kamer die niet later sluit; een kamer die
+  later sluit wacht tot een volgende ronde.
   Zijn er meer kamers dan plekken (max 7), dan valt de kamer met de slechtste plek af; is dat een
   bestaande reactie van de bot, dan trekt hij die in. Reacties die je zelf plaatst blijven staan.
   Geen plekgrens meer, tenzij je `SSH_MAX_POSITIE` zet.
