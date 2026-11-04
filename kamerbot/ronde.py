@@ -85,6 +85,8 @@ def overzicht(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = N
     for i, k in enumerate(reacties, 1):
         pos = f"#{k.positie} van {k.aantal_reacties}" if k.positie else "positie ?"
         zelf = "" if db.heeft("ssh", str(k.flow_id), "gereageerd") else " · zelf geplaatst"
+        if selectie.plekfilter(k, cfg):
+            zelf += f" · ⚠️ bezichtiging buiten top {cfg.bezichtiging_max_plek}"
         regels.append(
             f'{i}. <b>{pos}</b> · <a href="{k.url}">{html.escape(k.adres)}</a> · €{k.brutto_huur:.0f} · '
             f"{k.soort} · sluit {k.deadline:%a %d-%m %H:%M}{zelf}"
@@ -269,23 +271,29 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             continue
         if k.al_gereageerd:
             k.oordeel = beoordelaar.beoordeel(k)
-            # Zelf gereageerd en blijkt het huis toch iets anders te zoeken: meteen intrekken. Reacties die
-            # je zelf op de site plaatste laat de bot staan; dat is jouw keuze.
-            fout = selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k)
-            if fout and cfg.auto_reageren and db.heeft("ssh", str(k.flow_id), "gereageerd"):
+            # Gereageerd door de bot en blijkt het huis toch iets anders te zoeken: meteen intrekken. Reacties
+            # die je zelf op de site plaatste laat de bot daarvoor staan; dat is jouw keuze.
+            van_bot = db.heeft("ssh", str(k.flow_id), "gereageerd")
+            fout = (selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k)) if van_bot else None
+            # Bezichtiging buiten de top 5: ook je eigen reactie mag weg, tenzij INTREKKEN_HANDMATIG=0.
+            if not fout and (van_bot or cfg.intrekken_handmatig):
+                fout = selectie.plekfilter(k, cfg)
+            if fout and cfg.auto_reageren:
                 try:
                     ssh.trek_in(k)
                 except httpx.HTTPError as e:
                     log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
                 else:
                     vergeet_reactie(db, k)
-                    tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}):\n{regel(k)}")
+                    zelf = "" if van_bot else ", zelf geplaatst"
+                    tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}{zelf}):\n{regel(k)}")
                     continue
             gereageerd.append(k)
             continue
         if selectie.basisfilter(k, cfg.filters):
             continue
-        reden = selectie.fietsfilter(k, cfg.filters, geo) or selectie.detailfilter(k, cfg.filters)
+        reden = (selectie.fietsfilter(k, cfg.filters, geo) or selectie.detailfilter(k, cfg.filters)
+                 or selectie.plekfilter(k, cfg))
         if not reden:
             k.oordeel = beoordelaar.beoordeel(k)
             reden = selectie.oordeelfilter(k)
