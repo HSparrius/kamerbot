@@ -6,7 +6,7 @@ Twee rondes per dag, elk op een willekeurig moment binnen een venster (Hidde, 18
 Mislukt een ronde (bijv. inloggen), dan probeert de bot het 10 minuten later opnieuw, zolang dat nog
 binnen het venster valt.
 
-Commando's (alleen vanuit je eigen chat): /update, /status, /nu.
+Commando's (alleen vanuit je eigen chat): /update, /status, /nu, /overzicht.
 
 /update werkt zoals bij de ritbot: de bot schrijft data/update.request, een systemd-pad-unit
 start deploy/update.sh, en dat script laat een melding achter in data/notices/.
@@ -24,7 +24,7 @@ import httpx
 from . import selectie
 from .config import Config
 from .opslag import Opslag
-from .ronde import RondeMislukt, ronde
+from .ronde import RondeMislukt, overzicht, ronde
 from .ssh import NL, NietIngelogd
 from .telegram import Telegram
 
@@ -54,6 +54,7 @@ VENSTERS = {
 OPNIEUW_NA = timedelta(minutes=10)
 SPELING = timedelta(minutes=4)
 COMMANDOS = {
+    "overzicht": "Waar je staat ingeschreven en op welke plek",
     "status": "Laatste en volgende ronde",
     "nu": "Nu een ronde draaien",
     "update": "Nieuwste versie installeren",
@@ -173,6 +174,18 @@ class Dienst:
         log.info("Klaar: %s", self.laatste)
         return gelukt
 
+    def maak_overzicht(self) -> str:
+        try:
+            return overzicht(self.cfg)
+        except RondeMislukt as e:
+            return f"Overzicht lukt niet: {e}"
+        except NietIngelogd:
+            (self.data / "ssh-cookies.json").unlink(missing_ok=True)
+            return "SSH-sessie verlopen, probeer /overzicht zo nog een keer"
+        except Exception as e:  # de dienst moet blijven draaien
+            log.exception("Overzicht mislukt")
+            return f"Overzicht mislukt: {html.escape(oorzaak(e))}"
+
     # ------------------------------------------------------------------ telegram
     def verwerk(self, bericht: dict) -> None:
         if str((bericht.get("chat") or {}).get("id")) != str(self.cfg.telegram_chat_id):
@@ -187,6 +200,8 @@ class Dienst:
             self.tg.stuur("🔎 Ronde gestart…")
             self.doe_ronde("ronde op verzoek")
             self.tg.stuur(f"Klaar: {self.laatste}")
+        elif cmd == "/overzicht":
+            self.tg.stuur(self.maak_overzicht())
         elif cmd == "/status":
             volgende = self.planning.volgende(datetime.now(NL))
             auto = "aan" if self.cfg.auto_reageren else "uit (alleen voorstellen)"

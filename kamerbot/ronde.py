@@ -56,6 +56,34 @@ def inloggen(cfg: Config, db: Opslag, tg: Telegram) -> SSHClient:
     return SSHClient(cookies)
 
 
+def overzicht(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None) -> str:
+    """Waar je nu op gereageerd hebt en op welke plek je staat, eerst wat het eerst sluit (voor /overzicht)."""
+    tg = tg or Telegram(cfg.telegram_token, cfg.telegram_chat_id)
+    db = Opslag(cfg.data_dir / "kamerbot.db")
+    ssh = ssh or inloggen(cfg, db, tg)
+    reacties = []
+    for k in ssh.aanbod():
+        try:
+            ssh.details(k)
+        except httpx.HTTPError as e:
+            log.warning("Details %s overgeslagen: %s", k.adres, httpfout(e))
+            continue
+        if k.al_gereageerd:
+            reacties.append(k)
+    if not reacties:
+        return "📋 Je hebt nu geen reacties open bij SSH."
+    reacties.sort(key=lambda k: k.deadline)
+    regels = []
+    for i, k in enumerate(reacties, 1):
+        pos = f"#{k.positie} van {k.aantal_reacties}" if k.positie else "positie ?"
+        zelf = "" if db.heeft("ssh", str(k.flow_id), "gereageerd") else " · zelf geplaatst"
+        regels.append(
+            f'{i}. <b>{pos}</b> · <a href="{k.url}">{html.escape(k.adres)}</a> · €{k.brutto_huur:.0f} · '
+            f"{k.soort} · sluit {k.deadline:%a %d-%m %H:%M}{zelf}"
+        )
+    return f"📋 Je SSH-reacties ({len(reacties)} van {cfg.max_actief}), eerst wat het eerst sluit:\n" + "\n".join(regels)
+
+
 def maak_agenda(cfg: Config, db: Opslag, tg: Telegram) -> Agenda | None:
     if not (cfg.google_service_account_json and cfg.gcal_agenda_id):
         return None
