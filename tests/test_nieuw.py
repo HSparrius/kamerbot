@@ -682,3 +682,65 @@ def test_overzicht_markeert_bezichtiging_buiten_top_5(tmp_path):
                                        actief=2), tg=FakeTG())
     assert "buiten top 5" in [r for r in tekst.splitlines() if "#8 van" in r][0]
     assert "buiten top 5" not in [r for r in tekst.splitlines() if "#2 van" in r][0]
+
+
+# ------------------------------------------------------------------ /keuzes
+def test_keuzes_groeperen_de_redenen_van_de_ronde(tmp_path):
+    from kamerbot import keuzes
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 2
+    later = datetime.now(timezone.utc) + timedelta(days=2)
+    kamers = [
+        kamer(1, al_gereageerd=True, positie=3),                       # blijft
+        kamer(2, positie=2),                                           # gekozen (1 plek vrij)
+        kamer(3, positie=9),                                           # geen plek
+        kamer(4, positie=1, deadline=later),                           # later dan alles: wacht
+        kamer(5, geslacht="female"),                                   # zoekt een vrouw
+        kamer(6, straat="Padualaan"),                                  # Science Park
+        kamer(7, brutto_huur=1200),                                    # te duur
+        kamer(8, soort="Bezichtiging", positie=9),                     # bezichtiging buiten top 5
+        kamer(9, stad="AMERSFOORT"),                                   # andere stad
+    ]
+    ssh = FakeSSH(kamers, actief=1)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [2]
+    data = json.loads((tmp_path / "keuzes.json").read_text())
+    groep = {r["flow_id"]: r["groep"] for r in data["kamers"]}
+    assert groep == {1: "blijft", 2: "gekozen", 3: "geen_plek", 4: "wacht", 5: "vrouw", 6: "locatie",
+                     7: "duur", 8: "bezichtiging", 9: "stad"}
+    tekst = "\n".join(keuzes.berichten(tmp_path / "keuzes.json"))
+    assert tekst.index("Gekozen") < tekst.index("Zoekt een vrouw") < tekst.index("Te duur")
+    assert "Padualaan" in tekst and "Andere stad</b> (1)" in tekst and "AMERSFOORT" not in tekst
+
+
+def test_keuzes_ingetrokken_voor_betere_kamer_en_te_lang_bericht(tmp_path):
+    from kamerbot import keuzes
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 1
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "1", "gereageerd")
+    ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=30), kamer(2, positie=2)], actief=1)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    data = json.loads((tmp_path / "keuzes.json").read_text())
+    r1 = next(r for r in data["kamers"] if r["flow_id"] == 1)
+    assert r1["groep"] == "geen_plek" and "ingetrokken voor" in r1["detail"]
+
+    k = Keuzes = keuzes.Keuzes()
+    for i in range(200):
+        Keuzes.zet(kamer(i), "duur", "huur €1200")
+    k.bewaar(tmp_path / "veel.json")
+    delen = keuzes.berichten(tmp_path / "veel.json")
+    assert len(delen) > 1 and all(len(d) <= 4096 for d in delen)
+
+
+def test_groep_van_kent_alle_filterredenen():
+    from kamerbot.keuzes import groep_van
+    f = Config().filters
+    assert groep_van(selectie.basisfilter(kamer(1, brutto_huur=2000), f)) == "duur"
+    assert groep_van(selectie.basisfilter(kamer(1, straat="Ina Boudier-Bakkerlaan"), f)) == "locatie"
+    assert groep_van(selectie.basisfilter(kamer(1, stad="ZEIST"), f)) == "stad"
+    assert groep_van(selectie.eisenfilter(kamer(1, geslacht="female"), f)) == "vrouw"
+    assert groep_van(selectie.eisenfilter(kamer(1, verhaaltje="Wij zoeken een leuke meid!"), f)) == "vrouw"
+    assert groep_van(selectie.eisenfilter(kamer(1, verhaaltje="An international house."), f)) == "woord"
+    assert groep_van(selectie.plekfilter(kamer(1, soort="Bezichtiging", positie=8), Config())) == "bezichtiging"
+    assert groep_van(selectie.oordeelfilter(kamer(1, oordeel=oordeel(past=False, cijfer=1, reden="x")))) == "taalmodel"
+    assert groep_van("12 min fietsen naar CS") == "fiets"

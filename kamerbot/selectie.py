@@ -139,23 +139,27 @@ def rang(k: Kamer, nu: datetime) -> tuple:
     return (k.deadline - nu > timedelta(hours=VOORRANG_UUR), k.positie or 10_000, k.deadline)
 
 
+def niet_rijp(k: Kamer, cfg: Config, nu: datetime) -> str | None:
+    """Waarom kies() een kandidaat (nog) overslaat, of None. Ook gebruikt voor /keuzes."""
+    if k.deadline <= nu:
+        return "gesloten"
+    if cfg.reageer_venster_uur and k.deadline - nu > timedelta(hours=cfg.reageer_venster_uur):
+        return f"sluit pas over meer dan {cfg.reageer_venster_uur:g} uur (REAGEER_VENSTER_UUR)"
+    # Geen positiegrens meer, tenzij SSH_MAX_POSITIE gezet is.
+    if cfg.max_positie and k.positie is not None and k.positie > cfg.max_positie:
+        return f"plek {k.positie}, grens {cfg.max_positie} (SSH_MAX_POSITIE)"
+    return None
+
+
 def kies(kandidaten: list[Kamer], vrije_plekken: int, cfg: Config, nu: datetime | None = None) -> list[Kamer]:
     nu = nu or datetime.now(timezone.utc)
-    venster = timedelta(hours=cfg.reageer_venster_uur)
-    rijp = [
-        k
-        for k in kandidaten
-        if (not cfg.reageer_venster_uur or k.deadline - nu <= venster)
-        and k.deadline > nu
-        # Geen positiegrens meer, tenzij SSH_MAX_POSITIE gezet is.
-        and (not cfg.max_positie or k.positie is None or k.positie <= cfg.max_positie)
-    ]
+    rijp = [k for k in kandidaten if not niet_rijp(k, cfg, nu)]
     rijp.sort(key=lambda k: (rang(k, nu), -score(k)))
     return rijp[: max(vrije_plekken, 0)]
 
 
-def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int,
-            nu: datetime | None = None) -> tuple[list[tuple[Kamer, Kamer]], list[Kamer]]:
+def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int, nu: datetime | None = None,
+            wacht: list[Kamer] | None = None) -> tuple[list[tuple[Kamer, Kamer]], list[Kamer]]:
     """Welke reacties van de bot intrekken en op welke nieuwe kamers reageren, met `plekken` plekken
     voor de bot (vrije plekken + zijn eigen reacties). De beste `plekken` kamers volgens rang() blijven;
     bij gelijke rang wint een bestaande reactie. Zo wordt er alleen ingetrokken als er te veel zijn.
@@ -165,7 +169,8 @@ def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int,
     later sluit kan wachten: tegen die tijd is de andere reactie beslist, en je plek hangt niet af van
     hoe vroeg je reageert. Wacht hij te lang, dan krijgt hij in zijn laatste 24 uur voorrang.
 
-    Geeft (ruil, keuze): ruil is een lijst (in te trekken reactie, kamer die zijn plek krijgt)."""
+    Geeft (ruil, keuze): ruil is een lijst (in te trekken reactie, kamer die zijn plek krijgt).
+    Kamers die wel goed genoeg zijn maar wachten omdat ze later sluiten, komen in `wacht` (voor /keuzes)."""
     nu = nu or datetime.now(timezone.utc)
     alles = sorted([(rang(k, nu), 0, i, k) for i, k in enumerate(eigen)]
                    + [(rang(k, nu), 1, i, k) for i, k in enumerate(nieuw)], key=lambda t: t[:3])
@@ -179,6 +184,8 @@ def verdeel(eigen: list[Kamer], nieuw: list[Kamer], plekken: int,
     for n in gekozen[vrij:]:
         oud = next((e for e in weg if e.deadline >= n.deadline), None)
         if oud is None:
+            if wacht is not None:
+                wacht.append(n)
             continue  # wachten: alles wat zou moeten wijken sluit eerder
         weg.remove(oud)
         ruil.append((oud, n))

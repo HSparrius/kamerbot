@@ -6,7 +6,7 @@ Twee rondes per dag, elk op een willekeurig moment binnen een venster (Hidde, 18
 Mislukt een ronde (bijv. inloggen), dan probeert de bot het 10 minuten later opnieuw, zolang dat nog
 binnen het venster valt.
 
-Commando's (alleen vanuit je eigen chat): /update, /status, /nu, /overzicht.
+Commando's (alleen vanuit je eigen chat): /update, /status, /nu, /overzicht, /keuzes.
 
 /update werkt zoals bij de ritbot: de bot schrijft data/update.request, een systemd-pad-unit
 start deploy/update.sh, en dat script laat een melding achter in data/notices/.
@@ -21,7 +21,7 @@ from datetime import time as tijd
 
 import httpx
 
-from . import selectie
+from . import keuzes, selectie
 from .config import Config
 from .opslag import Opslag
 from .ronde import RondeMislukt, overzicht, ronde
@@ -55,6 +55,7 @@ OPNIEUW_NA = timedelta(minutes=10)
 SPELING = timedelta(minutes=4)
 COMMANDOS = {
     "overzicht": "Waar je staat ingeschreven en op welke plek",
+    "keuzes": "Welke kamers wel en niet gekozen zijn, en waarom",
     "status": "Laatste en volgende ronde",
     "nu": "Nu een ronde draaien",
     "update": "Nieuwste versie installeren",
@@ -202,6 +203,14 @@ class Dienst:
             self.tg.stuur(f"Klaar: {self.laatste}")
         elif cmd == "/overzicht":
             self.tg.stuur(self.maak_overzicht())
+        elif cmd == "/keuzes":
+            try:
+                delen = keuzes.berichten(self.data / "keuzes.json")
+            except (OSError, ValueError, KeyError) as e:
+                log.exception("Keuzes lezen mislukt")
+                delen = [f"Keuzes lezen mislukt: {html.escape(str(e)[:150])}"]
+            for deel in delen:
+                self.tg.stuur(deel)
         elif cmd == "/status":
             volgende = self.planning.volgende(datetime.now(NL))
             auto = "aan" if self.cfg.auto_reageren else "uit (alleen voorstellen)"

@@ -14,6 +14,7 @@ from .afstand import Geo
 from .agenda import Agenda, AgendaFout, afspraak, afspraak_id
 from .beoordeling import Beoordelaar
 from .config import Config
+from .keuzes import Keuzes
 from .login import log_in
 from .opslag import Opslag
 from .ssh import Kamer, Reactie, SSHClient
@@ -259,6 +260,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     geo = geo or Geo(db.db)
 
     kandidaten, nieuw, gereageerd = [], [], []
+    keuzes = Keuzes()  # per kamer wat de ronde besloot en waarom, voor /keuzes
     aanbod = ssh.aanbod()
     for k in aanbod:
         # Altijd de details ophalen: ook een kamer buiten je filters kan een reactie van je hebben
@@ -268,6 +270,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         except httpx.HTTPError as e:
             # Eén kamer waarvan SSH de details niet geeft, mag de rest van de ronde niet tegenhouden.
             log.warning("Details %s overgeslagen: %s", k.adres, httpfout(e))
+            keuzes.zet(k, "fout", f"details ophalen mislukt ({httpfout(e)})")
             continue
         if k.al_gereageerd:
             k.oordeel = beoordelaar.beoordeel(k)
@@ -283,14 +286,22 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
                     ssh.trek_in(k)
                 except httpx.HTTPError as e:
                     log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
+                    keuzes.afgewezen(k, fout, f", intrekken mislukt ({httpfout(e)}), reactie staat nog")
                 else:
                     vergeet_reactie(db, k)
                     zelf = "" if van_bot else ", zelf geplaatst"
                     tg.stuur(f"↩️ Reactie ingetrokken ({html.escape(fout)}{zelf}):\n{regel(k)}")
+                    keuzes.afgewezen(k, fout, " · ↩️ reactie ingetrokken")
                     continue
+            elif fout:
+                keuzes.afgewezen(k, fout, " · reactie staat nog (AUTO_REAGEREN uit)")
+            else:
+                keuzes.zet(k, "blijft", "" if van_bot else "zelf geplaatst")
             gereageerd.append(k)
             continue
-        if selectie.basisfilter(k, cfg.filters):
+        reden = selectie.basisfilter(k, cfg.filters)
+        if reden:
+            keuzes.afgewezen(k, reden)
             continue
         reden = (selectie.fietsfilter(k, cfg.filters, geo) or selectie.detailfilter(k, cfg.filters)
                  or selectie.plekfilter(k, cfg))
@@ -299,6 +310,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             reden = selectie.oordeelfilter(k)
         if reden:
             log.info("Afgewezen %s: %s", k.adres, reden)
+            keuzes.afgewezen(k, reden)
             continue
         kandidaten.append(k)
         if not db.heeft("ssh", str(k.flow_id), "gemeld"):
@@ -321,14 +333,24 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     plekken = vrij + len(eigen)
     # Kamers waar SSH je op laat reageren, beste eerst (binnen 24 uur sluitend, dan laagste plek).
     mogelijk = []
-    for k in selectie.kies(kandidaten, len(kandidaten), cfg):
-        if len(mogelijk) >= plekken:
-            break
+    nu = datetime.now(timezone.utc)
+    volgorde = selectie.kies(kandidaten, len(kandidaten), cfg, nu)
+    in_rij = {id(k) for k in volgorde}
+    for k in kandidaten:
+        if id(k) not in in_rij:
+            keuzes.afgewezen(k, selectie.niet_rijp(k, cfg, nu) or "niet gekozen")
+    for k in volgorde:
         if db.heeft("ssh", str(k.flow_id), "gereageerd"):
+            keuzes.zet(k, "zelf_ingetrokken")
+            continue
+        if len(mogelijk) >= plekken:
+            # Rest van de rij: alle plekken gaan al naar kamers die hoger staan. SSH niet meer vragen.
+            keuzes.zet(k, "geen_plek", f"alle {cfg.max_actief} plekken gaan naar kamers die voorgaan")
             continue
         mag, reden = ssh.kan_reageren(k)
         if not mag or "mismatch" in reden:
             log.info("SSH zegt nee op %s: %s", k.adres, reden)
+            keuzes.zet(k, "ssh_nee", reden or "kan niet reageren")
             continue
         mogelijk.append(k)
 
@@ -336,7 +358,13 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     # bestaande reactie is (Hidde, 3 nov 2026), maar alleen voor een kamer die niet later sluit
     # (Hidde, 4 nov 2026). Intrekken kost niets: je plek hangt af van je inschrijfduur, dus later
     # opnieuw reageren geeft dezelfde plek.
-    ruil, keuze = selectie.verdeel(eigen, mogelijk, plekken)
+    wacht: list[Kamer] = []
+    ruil, keuze = selectie.verdeel(eigen, mogelijk, plekken, nu, wacht)
+    for k in mogelijk:
+        if k in wacht:
+            keuzes.zet(k, "wacht", "sluit later dan elke reactie die zou moeten wijken")
+        elif k not in keuze:
+            keuzes.zet(k, "geen_plek", f"je {plekken} reacties staan op kamers die voorgaan")
     ingetrokken = 0
     for k, voor in ruil:
         if not cfg.auto_reageren:
@@ -347,13 +375,17 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
         except httpx.HTTPError as e:
             log.warning("Intrekken %s mislukt: %s", k.adres, httpfout(e))
             keuze.remove(voor)  # die plek komt dan niet vrij
+            keuzes.zet(voor, "fout", f"plek zou vrijkomen door {k.adres} in te trekken, maar dat mislukte")
             continue
         vergeet_reactie(db, k)
         ingetrokken += 1
         gereageerd.remove(k)
+        keuzes.zet(k, "geen_plek", f"↩️ ingetrokken voor {voor.adres} (plek {voor.positie}, {waarom(voor)})")
         tg.stuur(f"↩️ Reactie ingetrokken (plek {k.positie}{zelf}) voor {html.escape(voor.adres)} "
                  f"(plek {voor.positie}, {waarom(voor)}):\n{regel(k)}")
     if not cfg.auto_reageren:
+        for k in keuze[vrij:]:
+            keuzes.zet(k, "geen_plek", "geen plek vrij (AUTO_REAGEREN uit, er wordt niets ingetrokken)")
         keuze = keuze[:vrij]
     log.info("%d kandidaten, %d plekken vrij, %d gekozen", len(kandidaten), vrij, len(keuze))
 
@@ -362,6 +394,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             if not db.heeft("ssh", str(k.flow_id), "voorstel"):
                 if tg.stuur(f"👉 Zou nu reageren op:\n{regel(k)}\n(AUTO_REAGEREN staat uit)"):
                     db.zet("ssh", str(k.flow_id), "voorstel")
+            keuzes.zet(k, "gekozen", "alleen voorgesteld (AUTO_REAGEREN uit)")
             continue
         try:
             ssh.reageer(k)
@@ -372,10 +405,18 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             if not db.heeft("ssh", str(k.flow_id), "reageerfout"):
                 tg.stuur(f"⚠️ Reageren lukte niet ({httpfout(e)}):\n{regel(k)}")
                 db.zet("ssh", str(k.flow_id), "reageerfout")
+            keuzes.zet(k, "fout", f"reageren mislukt ({httpfout(e)})")
             continue
         db.zet("ssh", str(k.flow_id), "gereageerd")
         tg.stuur(f"✅ Gereageerd op:\n{regel(k)}")
         gereageerd.append(k)
+        keuzes.zet(k, "gekozen", "" if selectie.rang(k, nu)[0] else f"sluit binnen {selectie.VOORRANG_UUR} uur, gaat voor")
+
+    keuzes.wacht_op_voorrang(nu)
+    try:
+        keuzes.bewaar(cfg.data_dir / "keuzes.json")
+    except OSError as e:  # /keuzes is bijzaak; de ronde zelf is gelukt
+        log.warning("Keuzes bewaren mislukt: %s", e)
 
     bijwerken_agenda(agenda, db, tg, ssh, {k.flow_id: k for k in aanbod}, beoordelaar)
 
