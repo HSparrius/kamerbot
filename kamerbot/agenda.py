@@ -126,13 +126,25 @@ class Agenda:
         self._tot = nu + float(r.json().get("expires_in", 3600))
         return self._token
 
-    def _call(self, methode: str, pad: str, body: dict | None = None) -> int:
+    def _verzoek(self, methode: str, pad: str, body: dict | None = None) -> httpx.Response:
         try:
-            r = self.http.request(methode, f"{API}/calendars/{self.cal}/events{pad}", json=body,
-                                  headers={"Authorization": f"Bearer {self._auth()}"})
+            return self.http.request(methode, f"{API}/calendars/{self.cal}/events{pad}", json=body,
+                                     headers={"Authorization": f"Bearer {self._auth()}"})
         except httpx.HTTPError as e:
             raise AgendaFout(f"Google Agenda niet bereikbaar ({type(e).__name__})") from e
-        return r.status_code
+
+    def _call(self, methode: str, pad: str, body: dict | None = None) -> int:
+        return self._verzoek(methode, pad, body).status_code
+
+    def lees(self, event_id: str) -> dict[str, Any] | None:
+        """De afspraak zoals hij nu in de agenda staat, of None als hij er niet (meer) is."""
+        r = self._verzoek("GET", f"/{event_id}")
+        if r.status_code in (404, 410):
+            return None
+        if r.status_code != 200:
+            raise AgendaFout(f"afspraak lezen: HTTP {r.status_code}")
+        body = r.json()
+        return None if body.get("status") == "cancelled" else body
 
     def zet(self, event_id: str, body: dict[str, Any]) -> None:
         """Bijwerken, of aanmaken als hij er nog niet is. Een eerder verwijderde afspraak komt terug."""
