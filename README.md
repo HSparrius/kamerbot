@@ -21,6 +21,10 @@ automatisch op de beste kamers, met meldingen via Telegram.
   (`INTREKKEN_HANDMATIG=0` om die te laten staan). Reacties op kamers die al gesloten zijn tellen
   bij SSH nog mee in de 7, maar die raakt de bot niet aan.
   Geen plekgrens meer, tenzij je `SSH_MAX_POSITIE` zet.
+- **Bezichtigingen alleen in de top 5** (`BEZICHTIGING_MAX_PLEK`, 0 = uit): bij een kamer van het
+  type Bezichtiging reageert de bot alleen als je op plek 1 t/m 5 staat. Zak je eruit, dan trekt hij
+  de reactie in, ook als je die zelf plaatste (tenzij `INTREKKEN_HANDMATIG=0`). Elke ronde kijkt hij
+  opnieuw; kom je weer in de top 5, dan reageert hij weer. Hospiteren valt hier niet onder.
 - **Taalmodel** (optioneel, `ANTHROPIC_API_KEY`): Claude leest het verhaaltje, zegt of je past bij
   wie ze zoeken (cijfer 0–10 met een reden in de melding) en haalt de hospiteertijd eruit.
   Past het niet, dan slaat hij de kamer over. Elke tekst wordt maar één keer gelezen.

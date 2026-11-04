@@ -98,6 +98,15 @@ def eisenfilter(k: Kamer, f: Filters) -> str | None:
     return None
 
 
+def plekfilter(k: Kamer, cfg: Config) -> str | None:
+    """Bezichtiging en je staat buiten de top BEZICHTIGING_MAX_PLEK (Hidde, 4 nov 2026). Je plek kan
+    verschuiven als anderen reageren of intrekken, dus de bot kijkt elke ronde opnieuw. Plek onbekend = door."""
+    grens = cfg.bezichtiging_max_plek
+    if k.soort == "Bezichtiging" and grens and k.positie and k.positie > grens:
+        return f"bezichtiging, plek {k.positie}, alleen top {grens}"
+    return None
+
+
 def oordeelfilter(k: Kamer) -> str | None:
     """Afwijzen als het taalmodel zegt dat je niet past bij wie ze zoeken."""
     if k.oordeel is not None and not k.oordeel.past:
