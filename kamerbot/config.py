@@ -46,6 +46,9 @@ class Config:
     # Niet reageren boven deze plek op de wachtlijst; 0 = geen grens (Hidde, 3 nov 2026: bij te veel
     # kamers valt de slechtste plek af, zie selectie.verdeel).
     max_positie: int = int(os.environ.get("SSH_MAX_POSITIE", "0"))
+    # Ook reacties die je zelf op de site plaatste mogen wijken voor een betere kamer (Hidde, 4 nov 2026:
+    # Jacobijnenstraat #30 bleef staan terwijl Amsterdamsestraatweg #3 eruit ging). 0 = die blijven staan.
+    intrekken_handmatig: bool = os.environ.get("INTREKKEN_HANDMATIG", "1") == "1"
     # Op False: alleen melden via Telegram, niets versturen.
     auto_reageren: bool = os.environ.get("AUTO_REAGEREN", "0") == "1"
     # Taalmodel dat het verhaaltje leest (beoordeling.py); leeg = uit.

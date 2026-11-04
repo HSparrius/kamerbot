@@ -164,6 +164,7 @@ class FakeAgenda:
 def test_ronde_trekt_kansloze_reactie_in_en_gebruikt_de_plek(tmp_path):
     cfg = Config()
     cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    cfg.intrekken_handmatig = False
     gezakt = kamer(1, al_gereageerd=True, positie=35)
     zelf_gezakt = kamer(5, al_gereageerd=True, positie=40)  # zelf op de site gereageerd: blijft staan
     Opslag(tmp_path / "kamerbot.db").zet("ssh", "1", "gereageerd")
@@ -517,3 +518,45 @@ def test_overzicht_telt_reacties_op_gesloten_kamers_mee(tmp_path):
     tekst = overzicht(cfg, ssh=FakeSSH([kamer(1, al_gereageerd=True, positie=2)], actief=3), tg=FakeTG())
     assert "3 van 7 plekken bezet" in tekst
     assert "+ 2 reactie(s) op kamers die niet meer in het aanbod staan" in tekst
+
+
+def test_ronde_ruilt_slechtste_handmatige_reactie(tmp_path):
+    # 4 nov 2026: Jacobijnenstraat #30 (zelf geplaatst) moet wijken voor Amsterdamsestraatweg #3,
+    # beide sluiten donderdag; Gerbrandypad #2 (van de bot, sluit vrijdag) blijft.
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    nu = datetime.now(timezone.utc)
+    do, vr = nu + timedelta(hours=38), nu + timedelta(hours=62)
+    Opslag(tmp_path / "kamerbot.db").zet("ssh", "5", "gereageerd")
+    handmatig = [kamer(1, al_gereageerd=True, positie=30, deadline=do),
+                 kamer(2, al_gereageerd=True, positie=14, deadline=do),
+                 kamer(3, al_gereageerd=True, positie=15, deadline=do),
+                 kamer(4, al_gereageerd=True, positie=9, deadline=do)]
+    gerbrandy = kamer(5, al_gereageerd=True, positie=2, deadline=vr)
+    amsterdamse = kamer(6, positie=3, deadline=do)
+
+    class B:
+        def beoordeel(self, k):
+            return None
+
+    # 7 bezet: 5 in het aanbod plus 2 op kamers die al gesloten zijn.
+    ssh, tg = FakeSSH(handmatig + [gerbrandy, amsterdamse], actief=7), FakeTG()
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=B(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == [1]
+    assert ssh.gereageerd == [6]
+    assert any("plek 30, zelf geplaatst" in b for b in tg.berichten)
+
+
+def test_handmatig_blijft_staan_als_het_uit_staat(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.max_actief = tmp_path, True, 7
+    cfg.intrekken_handmatig = False
+    do = datetime.now(timezone.utc) + timedelta(hours=38)
+
+    class B:
+        def beoordeel(self, k):
+            return None
+
+    ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=30, deadline=do), kamer(6, positie=3, deadline=do)], actief=7)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=B(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == [] and ssh.gereageerd == []
