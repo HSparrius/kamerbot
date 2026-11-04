@@ -560,3 +560,60 @@ def test_handmatig_blijft_staan_als_het_uit_staat(tmp_path):
     ssh = FakeSSH([kamer(1, al_gereageerd=True, positie=30, deadline=do), kamer(6, positie=3, deadline=do)], actief=7)
     ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=B(), agenda=FakeAgenda())
     assert ssh.ingetrokken == [] and ssh.gereageerd == []
+
+
+# ------------------------------------------------------------------ bezichtigingen alleen top 5
+def test_bezichtiging_buiten_top_5_geen_reactie(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    ssh = FakeSSH([kamer(1, soort="Bezichtiging", positie=6),
+                   kamer(2, soort="Bezichtiging", positie=5),
+                   kamer(3, soort="Hospiteren", positie=40),
+                   kamer(4, soort="Bezichtiging", positie=None)], actief=0)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert sorted(ssh.gereageerd) == [2, 3, 4]
+
+
+def test_bezichtiging_gezakt_wordt_ingetrokken_ook_handmatig(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren = tmp_path, True
+    db = Opslag(tmp_path / "kamerbot.db")
+    db.zet("ssh", "1", "gereageerd")
+    bot = kamer(1, soort="Bezichtiging", al_gereageerd=True, positie=7)
+    zelf = kamer(2, soort="Bezichtiging", al_gereageerd=True, positie=9)
+    gerbrandy = kamer(3, soort="Bezichtiging", al_gereageerd=True, positie=2, aantal_reacties=2)
+    hosp = kamer(4, soort="Hospiteren", al_gereageerd=True, positie=30)
+    ssh, tg = FakeSSH([bot, zelf, gerbrandy, hosp], actief=4), FakeTG()
+    ronde(cfg, ssh=ssh, tg=tg, beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == [1, 2]
+    assert any("plek 9, alleen top 5, zelf geplaatst" in b for b in tg.berichten)
+    # Weer in de top 5: dan reageert hij opnieuw.
+    ssh = FakeSSH([kamer(1, soort="Bezichtiging", positie=4)], actief=2)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [1]
+
+
+def test_bezichtiging_handmatig_blijft_als_intrekken_handmatig_uit(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.intrekken_handmatig = tmp_path, True, False
+    ssh = FakeSSH([kamer(2, soort="Bezichtiging", al_gereageerd=True, positie=9)], actief=1)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.ingetrokken == []
+
+
+def test_bezichtiging_grens_uit(tmp_path):
+    cfg = Config()
+    cfg.data_dir, cfg.auto_reageren, cfg.bezichtiging_max_plek = tmp_path, True, 0
+    ssh = FakeSSH([kamer(1, soort="Bezichtiging", positie=20)], actief=0)
+    ronde(cfg, ssh=ssh, tg=FakeTG(), beoordelaar=GeenOordeel(), agenda=FakeAgenda())
+    assert ssh.gereageerd == [1]
+
+
+def test_overzicht_markeert_bezichtiging_buiten_top_5(tmp_path):
+    cfg = Config()
+    cfg.data_dir = tmp_path
+    tekst = overzicht(cfg, ssh=FakeSSH([kamer(1, soort="Bezichtiging", al_gereageerd=True, positie=8),
+                                        kamer(2, soort="Bezichtiging", al_gereageerd=True, positie=2)],
+                                       actief=2), tg=FakeTG())
+    assert "buiten top 5" in [r for r in tekst.splitlines() if "#8 van" in r][0]
+    assert "buiten top 5" not in [r for r in tekst.splitlines() if "#2 van" in r][0]
