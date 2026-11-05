@@ -39,7 +39,10 @@ SYSTEEM = (
     "hoe goed hij past bij wie ze zoeken (geslacht, taal, studie, leeftijd). "
     "Zegt de tekst niets over wie ze zoeken, dan past hij (cijfer rond 5). "
     "Staat er een tijd voor de hospiteeravond of kennismaking, geef dan begin en eind als HH:MM (24 uur); "
-    "staat er alleen een begintijd, laat het eind leeg. Verzin geen tijden."
+    "staat er alleen een begintijd, laat het eind leeg. Verzin geen tijden. "
+    "Noemt de tekst een leeftijd die ze zoeken, geef dan de ondergrens en bovengrens in hele jaren "
+    "(\"18-22\" = 18 en 22, \"vanaf 23\" = 23 en leeg, \"max 25\" = leeg en 25, \"rond de 20\" = leeg en leeg); "
+    "noemt de tekst geen leeftijd, laat beide leeg."
 )
 
 
@@ -49,6 +52,9 @@ class Oordeel(BaseModel):
     reden: str = Field(description="Eén korte zin in het Nederlands")
     hospiteer_begin: str | None = Field(description="Begintijd hospiteeravond als HH:MM, of null")
     hospiteer_eind: str | None = Field(description="Eindtijd hospiteeravond als HH:MM, of null")
+    # Standaard None, zodat oordelen van vóór 5 nov 2026 uit de database nog te lezen zijn.
+    min_leeftijd: int | None = Field(default=None, description="Minimumleeftijd die het huis noemt, of null")
+    max_leeftijd: int | None = Field(default=None, description="Maximumleeftijd die het huis noemt, of null")
 
 
 _TIJD = re.compile(r"^([01]?\d|2[0-3]):[0-5]\d$")
@@ -60,12 +66,21 @@ def _schoon(o: Oordeel) -> Oordeel:
         o.hospiteer_begin = None
     if not o.hospiteer_begin or (o.hospiteer_eind and not _TIJD.match(o.hospiteer_eind)):
         o.hospiteer_eind = None
+    # Onzinleeftijden weg, zodat een verkeerd gelezen getal (huisnummer, huur) niemand uitsluit.
+    if o.min_leeftijd is not None and not 15 <= o.min_leeftijd <= 99:
+        o.min_leeftijd = None
+    if o.max_leeftijd is not None and not 15 <= o.max_leeftijd <= 99:
+        o.max_leeftijd = None
     return o
 
 
 class Beoordelaar:
-    def __init__(self, api_key: str, profiel: str, db: Opslag, client=None):
+    def __init__(self, api_key: str, profiel: str, db: Opslag, client=None, leeftijd: int = 0):
         self.profiel = profiel or STANDAARD_PROFIEL
+        # Zonder leeftijd schreef het model "zijn leeftijd is niet bekend" (Hidde, 5 nov 2026). De leeftijd zit
+        # zo ook in de hash: na een verjaardag wordt alles opnieuw gelezen.
+        if leeftijd:
+            self.profiel += f" Leeftijd: {leeftijd} jaar."
         self.db = db.db
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS beoordeling (flow_id TEXT, hash TEXT, oordeel TEXT, PRIMARY KEY (flow_id, hash))"

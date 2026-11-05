@@ -744,3 +744,39 @@ def test_groep_van_kent_alle_filterredenen():
     assert groep_van(selectie.plekfilter(kamer(1, soort="Bezichtiging", positie=8), Config())) == "bezichtiging"
     assert groep_van(selectie.oordeelfilter(kamer(1, oordeel=oordeel(past=False, cijfer=1, reden="x")))) == "taalmodel"
     assert groep_van("12 min fietsen naar CS") == "fiets"
+
+
+def test_leeftijd_gaat_mee_in_profiel(tmp_path):
+    claude = FakeClaude(oordeel())
+    b = Beoordelaar("", "", Opslag(tmp_path / "db"), client=claude, leeftijd=24)
+    b.beoordeel(kamer())
+    assert "Leeftijd: 24 jaar." in claude.kw["messages"][0]["content"]
+    # Een andere leeftijd is een ander profiel: opnieuw lezen.
+    b2 = Beoordelaar("", "", Opslag(tmp_path / "db"), client=claude, leeftijd=25)
+    b2.beoordeel(kamer())
+    assert claude.aantal == 2
+
+
+def test_leeftijdseis_wijst_af_buiten_de_grenzen():
+    from kamerbot.keuzes import groep_van
+    vanaf_23 = kamer(oordeel=oordeel(min_leeftijd=23))
+    assert selectie.oordeelfilter(vanaf_23, 24) is None
+    jong = kamer(oordeel=oordeel(min_leeftijd=18, max_leeftijd=22))
+    reden = selectie.oordeelfilter(jong, 24)
+    assert reden == "leeftijd: zoekt 18–22 jaar, je bent 24" and groep_van(reden) == "leeftijd"
+    assert selectie.oordeelfilter(kamer(oordeel=oordeel(min_leeftijd=25)), 24) == "leeftijd: zoekt vanaf 25 jaar, je bent 24"
+    assert selectie.oordeelfilter(kamer(oordeel=oordeel(max_leeftijd=23)), 24) == "leeftijd: zoekt tot en met 23 jaar, je bent 24"
+    assert selectie.oordeelfilter(kamer(oordeel=oordeel(min_leeftijd=24, max_leeftijd=24)), 24) is None
+    # Leeftijd onbekend (LEEFTIJD=0): niet op leeftijd afwijzen.
+    assert selectie.oordeelfilter(jong, 0) is None
+
+
+def test_onzinleeftijd_wordt_genegeerd(tmp_path):
+    b = Beoordelaar("", "", Opslag(tmp_path / "db"), client=FakeClaude(oordeel(min_leeftijd=237, max_leeftijd=5)))
+    o = b.beoordeel(kamer())
+    assert o.min_leeftijd is None and o.max_leeftijd is None
+
+
+def test_oud_oordeel_zonder_leeftijd_blijft_leesbaar():
+    o = Oordeel.model_validate_json('{"past": true, "cijfer": 6, "reden": "x", "hospiteer_begin": null, "hospiteer_eind": null}')
+    assert o.min_leeftijd is None and selectie.oordeelfilter(kamer(oordeel=o), 24) is None

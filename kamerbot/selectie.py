@@ -107,9 +107,16 @@ def plekfilter(k: Kamer, cfg: Config) -> str | None:
     return None
 
 
-def oordeelfilter(k: Kamer) -> str | None:
-    """Afwijzen als het taalmodel zegt dat je niet past bij wie ze zoeken."""
-    if k.oordeel is not None and not k.oordeel.past:
+def oordeelfilter(k: Kamer, leeftijd: int = 0) -> str | None:
+    """Afwijzen als je buiten de leeftijd valt die het huis noemt, of als het taalmodel zegt dat je niet past bij
+    wie ze zoeken. De leeftijd controleert de bot zelf (Hidde, 5 nov 2026): het model leest alleen de grenzen."""
+    if k.oordeel is None:
+        return None
+    lo, hi = getattr(k.oordeel, "min_leeftijd", None), getattr(k.oordeel, "max_leeftijd", None)
+    if leeftijd and ((lo and leeftijd < lo) or (hi and leeftijd > hi)):
+        gezocht = f"{lo}–{hi}" if lo and hi else f"vanaf {lo}" if lo else f"tot en met {hi}"
+        return f"leeftijd: zoekt {gezocht} jaar, je bent {leeftijd}"
+    if not k.oordeel.past:
         return f"past niet: {k.oordeel.reden}"
     return None
 

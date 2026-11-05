@@ -28,6 +28,8 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Taalmodel** (optioneel, `ANTHROPIC_API_KEY`): Claude leest het verhaaltje, zegt of je past bij
   wie ze zoeken (cijfer 0–10 met een reden in de melding) en haalt de hospiteertijd eruit.
   Past het niet, dan slaat hij de kamer over. Elke tekst wordt maar één keer gelezen.
+  Noemt het huis een leeftijd ("18 t/m 22", "vanaf 23"), dan leest het model de grenzen en vergelijkt
+  de bot die zelf met `LEEFTIJD` (standaard 24; na je verjaardag ophogen). Daarbuiten valt de kamer af.
 - **Score:** binnen dezelfde deadline weegt je positie het zwaarst, daarna het cijfer van het
   taalmodel, m², huur en of het een zelfstandige woning is.
 - **Agenda** (optioneel, `GOOGLE_SERVICE_ACCOUNT_JSON` + `GCAL_AGENDA_ID`): alleen een

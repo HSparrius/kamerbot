@@ -23,6 +23,7 @@ GROEPEN = {
     "bezichtiging": "👀 Bezichtiging buiten de top",
     "vrouw": "♀️ Zoekt een vrouw",
     "woord": "📝 Verhaaltje sluit je uit",
+    "leeftijd": "🎂 Andere leeftijd gezocht",
     "taalmodel": "🤖 Past niet volgens het taalmodel",
     "locatie": "📍 Uitgesloten locatie (IBB, sterren, Science Park)",
     "duur": "💸 Te duur",
@@ -62,6 +63,8 @@ def groep_van(reden: str) -> str:
         return "vrouw"
     if r.startswith("verhaaltje:"):
         return "woord"
+    if r.startswith("leeftijd:"):
+        return "leeftijd"
     if r.startswith("past niet"):
         return "taalmodel"
     if r.startswith("sluit pas"):
