@@ -254,7 +254,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
     tg = tg or Telegram(cfg.telegram_token, cfg.telegram_chat_id)
     db = Opslag(cfg.data_dir / "kamerbot.db")
     ssh = ssh or inloggen(cfg, db, tg)
-    beoordelaar = beoordelaar or Beoordelaar(cfg.anthropic_api_key, cfg.profiel, db)
+    beoordelaar = beoordelaar or Beoordelaar(cfg.anthropic_api_key, cfg.profiel, db, leeftijd=cfg.leeftijd)
     if agenda is None:
         agenda = maak_agenda(cfg, db, tg)
     geo = geo or Geo(db.db)
@@ -277,7 +277,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
             # Gereageerd door de bot en blijkt het huis toch iets anders te zoeken: meteen intrekken. Reacties
             # die je zelf op de site plaatste laat de bot daarvoor staan; dat is jouw keuze.
             van_bot = db.heeft("ssh", str(k.flow_id), "gereageerd")
-            fout = (selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k)) if van_bot else None
+            fout = (selectie.eisenfilter(k, cfg.filters) or selectie.oordeelfilter(k, cfg.leeftijd)) if van_bot else None
             # Bezichtiging buiten de top 5: ook je eigen reactie mag weg, tenzij INTREKKEN_HANDMATIG=0.
             if not fout and (van_bot or cfg.intrekken_handmatig):
                 fout = selectie.plekfilter(k, cfg)
@@ -307,7 +307,7 @@ def ronde(cfg: Config, ssh: SSHClient | None = None, tg: Telegram | None = None,
                  or selectie.plekfilter(k, cfg))
         if not reden:
             k.oordeel = beoordelaar.beoordeel(k)
-            reden = selectie.oordeelfilter(k)
+            reden = selectie.oordeelfilter(k, cfg.leeftijd)
         if reden:
             log.info("Afgewezen %s: %s", k.adres, reden)
             keuzes.afgewezen(k, reden)

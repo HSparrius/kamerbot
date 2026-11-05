@@ -59,6 +59,9 @@ class Config:
     anthropic_api_key: str = field(default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", ""))
     # Wie je bent, voor het taalmodel; leeg = het standaardprofiel in beoordeling.py.
     profiel: str = field(default_factory=lambda: os.environ.get("PROFIEL", ""))
+    # Je leeftijd, voor huizen met een leeftijdseis (Hidde, 5 nov 2026: 24). Gaat mee naar het taalmodel en
+    # selectie.oordeelfilter wijst een kamer af als je buiten de gevraagde leeftijd valt. 0 = onbekend.
+    leeftijd: int = int(os.environ.get("LEEFTIJD", "24"))
     # Hospiteeravonden in je agenda (agenda.py); beide leeg = uit.
     google_service_account_json: str = field(default_factory=lambda: os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", ""))
     gcal_agenda_id: str = field(default_factory=lambda: os.environ.get("GCAL_AGENDA_ID", ""))
