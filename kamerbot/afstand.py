@@ -2,7 +2,7 @@
 
 Coördinaten komen van de PDOK Locatieserver (gratis, van de overheid, geen sleutel) op postcode +
 huisnummer en worden bewaard, zodat elk adres maar één keer wordt opgezocht. Fietstijd =
-hemelsbreed × 1,3 (omrijden over de weg) bij 15 km/u: 10 minuten is dan ongeveer 1,9 km hemelsbreed.
+hemelsbreed × 1,3 (omrijden over de weg) bij 15 km/u: 12 minuten is dan ongeveer 2,3 km hemelsbreed.
 """
 from __future__ import annotations
 

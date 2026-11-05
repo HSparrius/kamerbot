@@ -11,7 +11,7 @@ automatisch op de beste kamers, met meldingen via Telegram.
 - **Reageren op elk passend aanbod:** SSH rangschikt op inschrijfduur, dus intrekken en later
   opnieuw reageren kost niets. De bot reageert meteen; wil je pas in de laatste X uur reageren,
   zet dan `REAGEER_VENSTER_UUR` (onder 24 doet de 24-uursvoorrang niets).
-- **Fietstijd:** alleen kamers binnen 10 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
+- **Fietstijd:** alleen kamers binnen 12 minuten fietsen van Utrecht Centraal (`MAX_FIETSMINUTEN`),
   geschat uit de hemelsbrede afstand via PDOK. Onvindbaar adres = gaat gewoon door.
 - **Voorrang:** kamers die binnen 24 uur sluiten gaan voor, daarna de laagste plek op de wachtlijst.
   Een bestaande reactie wordt alleen ingetrokken voor een kamer die niet later sluit; een kamer die
